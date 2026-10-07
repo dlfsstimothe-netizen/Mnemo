@@ -1228,7 +1228,7 @@ function shareSection(){
 function aiSection(){
   if(env.sample||CFG.geminiKey)return '';
   const ai=getAI();
-  return '<section class="card stack"><h2 class="h2">Génération automatique <span class="chip">facultatif</span></h2><p class="small muted">Sans clé, utilise « Coller depuis un chat IA » dans un cours. Avec une clé Gemini gratuite, Mnémo génère les cartes tout seul. Crée-la sur <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Elle reste dans ton navigateur et n\'est pas incluse dans les sauvegardes.</p>'
+  return '<section class="card stack"><h2 class="h2">Génération automatique <span class="chip">facultatif</span></h2><p class="small muted">Sans clé, dépose ton cours, clique sur « Continuer », puis sur « Coller depuis un chat IA » : tu copies la consigne dans ChatGPT, Gemini ou Mistral et tu colles sa réponse. Avec une clé Gemini gratuite, Mnémo génère tout tout seul. Crée-la sur <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Elle reste dans ton navigateur et n\'est pas incluse dans les sauvegardes.</p>'
    +'<label class="f" for="gk">Clé API Gemini<input type="password" id="gk" data-i="gk" autocomplete="off" value="'+esc(ai.key||'')+'"></label>'
    +'<label class="f" for="gm">Modèle<input type="text" id="gm" data-i="gm" value="'+esc(ai.model||'gemini-2.5-flash')+'"></label></section>';
 }
