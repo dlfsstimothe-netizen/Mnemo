@@ -268,6 +268,8 @@ a{color:var(--accent)}
 .gbtn{gap:12px}
 .band .band-top .grow p{margin:0}
 @media (max-width:420px){.tile{min-height:160px;padding:14px}.tabs button{gap:5px;font-size:13px}}
+.cd{margin:6px 0 0;padding-left:20px;font-size:14px;color:var(--ink-2);display:grid;gap:2px}.cd .ok{color:var(--good);font-weight:700}
+[hidden]{display:none!important}
 </style>
 
 
@@ -633,35 +635,186 @@ function genOpts(){
   const n=(v)=>'<label class="opt"><input type="radio" name="gn" value="'+v+'" id="gn-'+v+'"'+(v===20?' checked':'')+'><span>'+v+'</span></label>';
   return '<div class="stack"><div class="stack"><span class="small" style="font-weight:600">Nombre de questions</span><div class="opts">'+[10,20,30,40].map(n).join('')+'</div></div>'
    +'<div class="stack"><span class="small" style="font-weight:600">Types de cartes</span><div class="opts">'+t('qcm','QCM',1)+t('flash','Flashcards',1)+t('open','Questions ouvertes',1)+t('vf','Vrai / faux',1)+'</div></div>'
-   +'<label class="f" for="gx">Consigne pour l\'IA <small>facultatif, ex. « insiste sur les formules »</small><input type="text" id="gx" name="gx" maxlength="200"></label></div>';
+   +(hasAI()?'<label class="f" for="gx">Consigne pour l\'IA <small>facultatif, ex. « insiste sur les formules »</small><input type="text" id="gx" name="gx" maxlength="200"></label>':'')+'</div>';
 }
 async function runGeneration(cid,opts,host){
   const c=S.docs[cid];if(!c||!c.text)return 0;
   const sub=(S.docs[c.subjectId]||{}).name||'';
-  const chunks=chunkText(c.text);
-  const per=clamp(Math.ceil(opts.count/chunks.length),3,20);
+  let local=!hasAI();
+  const chunks=local?[c.text]:chunkText(c.text);
+  const per=local?opts.count:clamp(Math.ceil(opts.count/chunks.length),3,20);
   G.ctl=new AbortController();G.busy=true;
-  let total=0,err=null;
+  let total=0,fell=null,usedLocal=false;
   try{
     for(let i=0;i<chunks.length;i++){
       if(G.ctl.signal.aborted)break;
-      host.innerHTML='<p><span class="spin"></span>L\'IA lit ton cours'+(chunks.length>1?' (partie '+(i+1)+' sur '+chunks.length+')':'')+'… ça prend en général une à deux minutes.</p>'
+      host.innerHTML=(local?'<p><span class="spin"></span>Mnémo lit ton cours et prépare tes questions…</p>'
+        :'<p><span class="spin"></span>L\'IA lit ton cours'+(chunks.length>1?' (partie '+(i+1)+' sur '+chunks.length+')':'')+'… ça prend en général une à deux minutes.</p>'
         +(total?'<p class="small muted">'+plural(total,'carte prête','cartes prêtes')+' pour l\'instant.</p>':'')
-        +'<button class="btn sm" data-a="stopgen" type="button">Arrêter</button>';
-      const known=(S.docs[cid].cards||[]).slice(-60).map(k=>k.q.slice(0,90));
-      let arr;
-      try{arr=await callAI(buildPrompt(c.title,sub,chunks[i],per,opts.types,opts.extra.trim(),known,i+1,chunks.length),G.ctl.signal)}
-      catch(e){if(e&&e.code==='cancelled')break;err=e;break}
-      if(arr&&!Array.isArray(arr)&&Array.isArray(arr.cards))arr=arr.cards;
-      if(!Array.isArray(arr)){err={code:'invalid_json'};break}
+        +'<button class="btn sm" data-a="stopgen" type="button">Arrêter</button>');
+      const cards=S.docs[cid].cards||[];
+      let arr=null;
+      if(!local){
+        const known=cards.slice(-60).map(k=>k.q.slice(0,90));
+        try{arr=await callAI(buildPrompt(c.title,sub,chunks[i],per,opts.types,opts.extra.trim(),known,i+1,chunks.length),G.ctl.signal)}
+        catch(e){if(e&&e.code==='cancelled')break;fell=e;local=true;arr=null}
+        if(arr&&!Array.isArray(arr)&&Array.isArray(arr.cards))arr=arr.cards;
+        if(!local&&!Array.isArray(arr)){fell={code:'invalid_json'};local=true;arr=null}
+      }
+      if(local){
+        await sleep(350);usedLocal=true;
+        arr=localCards(chunks[i],per,opts.types,cards.map(k=>k.q));
+      }
       const r=addCards(cid,arr.map(normCard).filter(Boolean));
       total+=r.added;
       if(r.full){toast('Limite atteinte : '+MAXCARDS+' cartes par cours. Crée un autre cours pour la suite.');break}
     }
   }finally{G.busy=false;G.ctl=null}
-  if(err){toast(ERR[err.code]||ERR.upstream_error);}
+  if(total&&usedLocal&&S.docs[cid])S.docs[cid].local=true;
+  if(fell&&total)toast("L'IA n'a pas répondu : j'ai utilisé le moteur intégré de Mnémo à la place.");
   else if(total)toast(plural(total,'carte ajoutée','cartes ajoutées')+'.');
+  else if(usedLocal)toast('Je n\'ai pas trouvé assez de matière dans ce texte. Colle un cours plus long ou plus structuré.');
   return total;
+}
+
+/* ---------- Moteur intégré (sans IA, sans clé, fonctionne hors ligne) ---------- */
+const LC_STOP=new Set(('le la les un une des du de d l à a au aux et ou mais donc or ni car que qu qui quoi dont où ce cet cette ces se s sa son ses leur leurs il elle ils elles on nous vous je j tu me m te t lui y en n ne pas plus par pour sur sous dans avec sans entre vers chez comme est sont être été étant était étaient sera seront fut ont avoir avait avaient aura eu fait faire peut peuvent doit doivent soit si très aussi alors ainsi lors puis tout tous toute toutes autre autres même mêmes cela ceci celui celle ceux celles quand quel quelle quels quelles depuis après avant pendant selon afin lorsque cependant toutefois notamment également').split(' '));
+const lcWords=s=>(s.toLowerCase().match(/[a-zà-öø-ÿœ]+/g)||[]);
+const lcKey=w=>w.length>=4&&!LC_STOP.has(w);
+const LC_DEF=/^((?:(?:un|une|le|la|les|l['’]|des|du|d['’])\s?)?[A-Za-zÀ-ÖØ-öø-ÿŒœ0-9][^,.;:()]{1,60}?)\s+(?:est|sont|désigne|désignent|correspond à|correspondent à|se définit comme|se définissent comme|consiste en|consiste à|représente|représentent|signifie|renvoie à|permet de|permettent de)\s+(.{15,})$/i;
+const LC_NUM=/\b\d+(?:[.,]\d+)?(?:\s?%)?/g;
+function lcSents(p){
+  const parts=p.replace(/([.!?…])\s+(?=[A-ZÀ-ÖØ-Þ0-9«"(])/g,'$1\u0001').split('\u0001'),m=[];
+  for(const s of parts){const prev=m[m.length-1];
+    if(prev&&/\b(?:art|etc|cf|p|pp|ex|env|fig|vol|av|apr|M|Mme|Mlle|Dr|Pr|St|al)\.$/i.test(prev.trim()))m[m.length-1]=prev+' '+s;else m.push(s)}
+  return m.map(s=>s.trim()).filter(s=>{const l=(s.match(/[A-Za-zÀ-ÿ]/g)||[]).length;return s.length>=18&&s.length<=420&&l/s.length>.6});
+}
+function lcParse(text){
+  const lines=text.replace(/\r/g,'').split('\n'),secs=[];
+  let cur={h:'',paras:[]},buf=[],prevOk=true;
+  const flush=()=>{if(buf.length){cur.paras.push(buf.join(' ').replace(/\s+/g,' ').trim());buf=[]}};
+  const push=()=>{flush();if(cur.paras.length)secs.push({h:cur.h,sents:cur.paras.flatMap(lcSents)})};
+  const NUMH=/^(?:\d+(?:\.\d+)*[.)]?|[IVX]+[.)]|[A-H][.)])\s+(?=\S)/;
+  const KW=/^(chapitre|partie|section|titre|introduction|conclusion|d[ée]finitions?|rappels?|exemples?|m[ée]thode|r[èe]gles?|principes?)\b/i;
+  for(let i=0;i<lines.length;i++){
+    let t=lines[i].trim();
+    if(!t){flush();prevOk=true;continue}
+    const bullet=/^[-•·*–]\s+/.test(t);
+    if(bullet){t=t.replace(/^[-•·*–]\s+/,'');if(!/[.!?]$/.test(t))t+='.';flush();buf.push(t);flush();prevOk=true;continue}
+    const nextT=(lines.slice(i+1).find(x=>x.trim())||'').trim(),w=t.split(/\s+/).length;
+    let head=false;
+    if(prevOk&&t.length<=90&&w<=12){
+      if(NUMH.test(t)&&!/[.;,]$/.test(t))head=true;
+      else if(KW.test(t)&&!/[.;,]$/.test(t)&&w<=9)head=true;
+      else if(w<=9&&!/[.!?;,:]$/.test(t)&&/^[A-ZÀ-ÖØ-Þ0-9«"]/.test(t)&&nextT&&nextT.length>t.length)head=true;
+    }
+    if(head){push();cur={h:t.replace(NUMH,'').replace(/[:\s]+$/,''),paras:[]}}else buf.push(t);
+    prevOk=head||/[.!?]$/.test(t);
+  }
+  push();
+  const out=secs.filter(s=>s.sents.length);
+  return out.length?out:[{h:'',sents:lcSents(text)}];
+}
+function lcRank(secs){
+  const freq={},all=[];
+  secs.forEach((sc,si)=>sc.sents.forEach((s,i)=>{all.push({s,si,i,id:all.length});new Set(lcWords(s).filter(lcKey)).forEach(w=>{freq[w]=(freq[w]||0)+1})}));
+  all.forEach(o=>{const ws=[...new Set(lcWords(o.s).filter(lcKey))];let sc=0;ws.forEach(w=>{sc+=freq[w]});
+    o.sc=ws.length?sc/Math.pow(ws.length,.6):0;
+    if(/\d/.test(o.s))o.sc*=1.15;if(LC_DEF.test(o.s))o.sc*=1.25;if(o.i===0)o.sc*=1.1;});
+  all.sort((a,b)=>b.sc-a.sc);
+  return{all,freq};
+}
+const lcCase=(w,like)=>/^[A-ZÀ-ÖØ-Þ]/.test(like)?w.charAt(0).toUpperCase()+w.slice(1):w.charAt(0).toLowerCase()+w.slice(1);
+function lcPools(R){
+  const P0={};
+  const nums=new Set(),caps=new Set();
+  R.all.forEach(o=>{(o.s.match(LC_NUM)||[]).forEach(x=>nums.add(x.trim()));
+    o.s.split(/\s+/).forEach((tok,i)=>{const w=tok.replace(/^[«"'(]+|[»"')\.,;:!?]+$/g,'');if(i>0&&/^[A-ZÀ-ÖØ-Þ][a-zà-ÿA-Z-]{3,}$/.test(w))caps.add(w)})});
+  const bad=w=>/(?:é|ée|és|ées|er|ir|ent|ait|ant|ait|ons|ez|ez|ise|isé|ant|ement|ège|èges)$/.test(w);
+  const words=Object.keys(R.freq).filter(w=>w.length>=6&&R.freq[w]>=2&&!bad(w)).sort((a,b)=>R.freq[b]-R.freq[a]);
+  const topic=new Set(words.slice(0,Math.min(2,Math.floor(words.length/6))));
+  P0.topic=topic;
+  words.splice(60);
+  return{nums:[...nums],caps:[...caps],words,topic};
+}
+function lcTarget(o,P,R){
+  const s=o.s;
+  const nm=(s.match(LC_NUM)||[]).map(x=>x.trim());
+  if(nm.length){
+    const t=nm.find(x=>/^\d{4}$/.test(x)||/%$/.test(x))||nm[0];
+    const v=parseFloat(t.replace(',','.')),pct=/%$/.test(t);
+    let d=P.nums.filter(x=>x!==t&&/%$/.test(x)===pct);d=shuffle(d).slice(0,3);
+    const mk=x=>pct?Math.round(x)+' %':String(Math.round(x));
+    [v+10,Math.round(v*2),Math.max(1,Math.round(v/2)),v+1,v+5].forEach(x=>{const c=mk(x);if(d.length<3&&c!==t&&!d.includes(c)&&x>0)d.push(c)});
+    if(d.length>=3)return{t,d:d.slice(0,3)};
+  }
+  const toks=s.split(/\s+/).map(x=>x.replace(/^[«"'(]+|[»"')\.,;:!?]+$/g,''));
+  const cand=toks.filter((w,i)=>i>0&&P.caps.includes(w));
+  if(cand.length){const t=cand[0];const d=shuffle(P.caps.filter(x=>x!==t&&!s.includes(x))).slice(0,3);if(d.length>=3)return{t,d}}
+  const kw=toks.filter(w=>w.length>=6&&R.freq[w.toLowerCase()]>=2&&P.words.includes(w.toLowerCase())&&!P.topic.has(w.toLowerCase())).sort((a,b)=>R.freq[b.toLowerCase()]-R.freq[a.toLowerCase()]);
+  if(kw.length){const t=kw[0];const d=shuffle(P.words.filter(x=>x!==t.toLowerCase()&&!s.toLowerCase().includes(x))).slice(0,3).map(x=>lcCase(x,t));if(d.length>=3)return{t,d}}
+  return null;
+}
+const lcMask=(s,t)=>{const i=s.indexOf(t);return i<0?null:s.slice(0,i)+'……'+s.slice(i+t.length)};
+function lcDef(s){
+  const m=s.match(LC_DEF);if(!m)return null;
+  const term=m[1].trim();if(term.split(/\s+/).length>7||/^(il|elle|ils|elles|ce|cela|ceci|on|cette|ces|ça|nous|vous|je|tu|y)\b/i.test(term))return null;
+  return{term,def:/^(que|qu['’])/i.test(m[2])?s:m[2].trim()};
+}
+const lcQ=term=>{
+  if(/^(les|des)\s/i.test(term))return 'Que sont '+lcCase(term,'a')+' ?';
+  if(/^(le|la|l['’]|un|une|du)\s?/i.test(term))return 'Qu\'est-ce que '+lcCase(term,'a')+' ?';
+  return 'Définis : '+term;
+};
+const lcCut=(s,n)=>s.length<=n?s:s.slice(0,s.lastIndexOf(' ',n)>n*.6?s.lastIndexOf(' ',n):n).replace(/[,;:\s]+$/,'')+'…';
+function lcTitle(text){
+  const first=(text.split('\n').find(l=>l.trim())||'').trim();
+  if(first&&first.length>=3&&first.length<=80&&!/[.!?;,]$/.test(first))return first.replace(/^(?:\d+(?:\.\d+)*[.)]?|[IVX]+[.)])\s+/,'');
+  const secs=lcParse(text);const h=secs.find(s=>s.h&&s.h.length<=80);
+  if(h)return h.h;
+  const f=(secs[0]&&secs[0].sents[0])||text.trim().slice(0,60);
+  return lcCut(f,60).replace(/[.…]+$/,'');
+}
+function localCards(text,n,types,known){
+  const secs=lcParse(text),R=lcRank(secs),P=lcPools(R),kn=new Set(known||[]),used=new Set();
+  const pool={flash:[],qcm:[],vf:[],open:[]};
+  R.all.forEach(o=>{const d=lcDef(o.s);if(d)pool.flash.push({o,c:{type:'flash',q:lcQ(d.term),a:lcCut(o.s,320)}})});
+  R.all.forEach((o,k)=>{if(o.s.length<40||o.s.length>260)return;
+    if(k%3===2){const tg=lcTarget(o,P,R);const flip=tg&&pool.vf.length%2===0;
+      pool.vf.push({o,c:flip?{type:'vf',q:o.s.replace(tg.t,tg.d[0]),answer:false,explain:'Dans le cours : '+o.s}:{type:'vf',q:o.s,answer:true,explain:'Cette phrase est tirée de ton cours.'}});return}
+    const tg=lcTarget(o,P,R);if(!tg)return;const mk=lcMask(o.s,tg.t);if(!mk)return;
+    pool.qcm.push({o,c:{type:'qcm',q:'Complète la phrase : '+mk,choices:[tg.t].concat(tg.d),answer:0,explain:o.s}})});
+  secs.forEach((sc,si)=>{if(sc.sents.length<2)return;const top=R.all.filter(o=>o.si===si).slice(0,3).sort((a,b)=>a.i-b.i);
+    const h=sc.h||'ce passage';
+    pool.open.push({o:top[0],c:{type:'open',q:'Explique avec tes mots : '+h,a:lcCut(top.map(x=>x.s).join(' '),700)}});
+    pool.flash.push({o:top[0],c:{type:'flash',q:'Cite une idée clé de : '+h,a:lcCut(top[0].s,320)},low:1}) });
+  pool.flash.sort((a,b)=>(a.low?1:0)-(b.low?1:0));
+  const W={qcm:.4,flash:.28,vf:.17,open:.15},sel=(types&&types.length?types:['qcm','flash','open','vf']).filter(t=>pool[t]);
+  const ansUsed=new Set(),credit={};sel.forEach(t=>credit[t]=0);const idx={qcm:0,flash:0,vf:0,open:0},out=[];
+  let guard=0;
+  while(out.length<n&&guard++<2000){
+    const live=sel.filter(t=>idx[t]<pool[t].length);if(!live.length)break;
+    live.forEach(t=>{credit[t]+=W[t]});
+    live.sort((a,b)=>credit[b]-credit[a]);const t=live[0];credit[t]-=1;
+    const it=pool[t][idx[t]++];if(!it)continue;
+    if(kn.has(it.c.q)||(it.c.type==='flash'&&ansUsed.has(it.c.a))||(it.o&&t!=='flash'&&t!=='open'&&used.has(it.o.id)))continue;
+    if(it.o&&t!=='flash'&&t!=='open')used.add(it.o.id);
+    kn.add(it.c.q);if(it.c.a)ansUsed.add(it.c.a);out.push(it.c);
+  }
+  return shuffle(out);
+}
+function localFiche(title,text){
+  const secs=lcParse(text),R=lcRank(secs),sc=new Map(R.all.map(o=>[o.s,o.sc]));
+  const inOrder=(arr)=>arr.slice().sort((a,b)=>a.si-b.si||a.i-b.i);
+  const top=k=>inOrder(R.all.slice(0,k));
+  const cue=(re,k)=>inOrder(R.all.filter(o=>re.test(o.s))).slice(0,k).map(o=>lcCut(o.s,240));
+  const defs=[];R.all.forEach(o=>{const d=lcDef(o.s);if(d&&defs.length<12)defs.push({term:d.term.replace(/^(?:un|une|le|la|les|l['’]|des|du|d['’])\s?/i,'').replace(/^./,c=>c.toUpperCase()),def:lcCut(d.def.replace(/^./,c=>c.toUpperCase()),300)})});
+  const facts=[];inOrder(R.all.filter(o=>/\d/.test(o.s))).forEach(o=>{if(facts.length<8){const m=o.s.match(LC_NUM);facts.push({label:m?m[0].trim():'Chiffre clé',value:lcCut(o.s,240)})}});
+  const sections=secs.slice(0,8).map((s,si)=>({heading:s.h||'Points clés',points:inOrder(R.all.filter(o=>o.si===si).slice(0,5)).map(o=>lcCut(o.s,230))})).filter(s=>s.points.length);
+  const selftest=secs.filter(s=>s.h).slice(0,6).map(s=>'Que faut-il retenir sur « '+s.h+' » ?').concat(defs.slice(0,2).map(d=>lcQ(d.term)));
+  return{title:title?'Fiche : '+title:'Fiche méthode',summary:lcCut(top(3).map(o=>o.s).join(' '),700),sections,definitions:defs,key_facts:facts,
+    method:cue(/\b(d['’]abord|ensuite|puis|enfin|étape|il faut|on doit|il convient|commencer par)\b/i,6),
+    pitfalls:cue(/\b(attention|erreur|piège|ne pas|jamais|exception|sauf|à noter|en revanche|contrairement)\b/i,5),selftest};
 }
 
 /* ---------- Lecture de fichiers ---------- */
@@ -1015,6 +1168,11 @@ function saveBar(second){
    +'<div class="wrap"><button class="btn primary" data-a="savedraft">'+ic('save',18)+'Enregistrer</button>'
    +(V.confirm==='discard'?'<button class="btn danger" data-a="discard">Confirmer : abandonner</button><button class="btn ghost" data-a="canceldiscard">Garder</button>':'<button class="btn ghost danger" data-a="askdiscard">Abandonner</button>')+'</div></section>';
 }
+function cardDetail(k){
+  if(k.type==='qcm')return '<ul class="cd">'+k.choices.map((ch,i)=>'<li'+(i===k.answer?' class="ok"':'')+'>'+rich(ch)+'</li>').join('')+'</ul>';
+  if(k.type==='vf')return '<p class="small muted">Réponse : <strong>'+(k.answer?'Vrai':'Faux')+'</strong></p>';
+  return '<p class="small muted">'+rich(k.a||'')+'</p>';
+}
 function viewDraft(){
   const dc=draftCourse(),c=dc?S.docs[dc]:null,df=draftFicheId(),d=df?S.docs[df]:null;
   if(!c&&!d)return back('home','Accueil')+'<div class="card stack"><p class="muted">Il n\'y a rien à enregistrer pour le moment.</p><div class="wrap"><button class="btn primary" data-a="import" data-m="both" data-id="">Créer un QCM ou une fiche</button></div></div>';
@@ -1026,8 +1184,8 @@ function viewDraft(){
     if(V.man&&c.text)h+=manualPanel(c);
     if(V.fman&&c.text)h+=ficheManualPanel(c);
     if(V.fgen)h+='<section class="card stack"><h2 class="h2">Fiche méthode</h2><div id="fprog" class="stack"></div></section>';
-    if(!V.gen&&!V.man&&!V.fman&&!V.fgen)h+='<div class="wrap">'+(hasAI()?'<button class="btn" data-a="opengen">'+(cards.length?'Générer plus de questions':'Générer des questions')+'</button>':'')+'<button class="btn" data-a="openman">Coller depuis un chat IA</button>'+(!d&&c.text?(hasAI()?'<button class="btn" data-a="genfiche">Créer aussi une fiche méthode</button>':'<button class="btn" data-a="openfman">Créer aussi une fiche méthode</button>'):'')+'</div>';
-    h+=cards.length?'<div class="list">'+cards.map(k=>'<div class="cardrow"><div class="grow"><div class="wrap" style="margin-bottom:6px"><span class="chip">'+TYPES[k.type]+'</span></div><div class="q">'+rich(k.q)+'</div></div><button class="btn sm ghost danger" data-a="deldraftcard" data-kid="'+k.id+'">Retirer</button></div>').join('')+'</div>':'<p class="muted small">Pas encore de question.</p>';
+    if(!V.gen&&!V.man&&!V.fman&&!V.fgen)h+=((c.local||(d&&d.local))?'<p class="note">Créé par le moteur intégré de Mnémo : relis chaque carte et retire celles qui ne te conviennent pas.</p>':'')+'<div class="wrap"><button class="btn" data-a="opengen">'+(cards.length?'Générer plus de questions':'Générer des questions')+'</button><button class="btn" data-a="openman">Coller depuis un chat IA</button>'+(!d&&c.text?'<button class="btn" data-a="genfiche">Créer aussi une fiche méthode</button>':'')+'</div>';
+    h+=cards.length?'<div class="list">'+cards.map(k=>'<div class="cardrow"><div class="grow"><div class="wrap" style="margin-bottom:6px"><span class="chip">'+TYPES[k.type]+'</span></div><div class="q">'+rich(k.q)+'</div>'+cardDetail(k)+'</div><button class="btn sm ghost danger" data-a="deldraftcard" data-kid="'+k.id+'">Retirer</button></div>').join('')+'</div>':'<p class="muted small">Pas encore de question.</p>';
     h+='</section>';
   }
   if(d){
@@ -1084,7 +1242,7 @@ function viewCourse(){
   if(V.fman&&c.text)h+=ficheManualPanel(c);
   if(V.fgen)h+='<section class="card stack"><h2 class="h2">Fiche méthode</h2><div id="fprog" class="stack"></div></section>';
   if(!V.edit&&!V.gen&&!V.man&&!V.fman&&!V.fgen){
-    h+='<div class="wrap">'+(c.text?((hasAI()?'<button class="btn" data-a="opengen">Générer plus de questions</button>':'')+'<button class="btn" data-a="openman">Coller depuis un chat IA</button>'+(hasAI()?'<button class="btn" data-a="genfiche">Créer une fiche méthode</button>':'<button class="btn" data-a="openfman">Créer une fiche méthode</button>')):'')+'<button class="btn" data-a="newcard">Ajouter une carte</button></div>';
+    h+='<div class="wrap">'+(c.text?('<button class="btn" data-a="opengen">Générer plus de questions</button><button class="btn" data-a="openman">Coller depuis un chat IA</button><button class="btn" data-a="genfiche">Créer une fiche méthode</button>'):'')+'<button class="btn" data-a="newcard">Ajouter une carte</button></div>';
   }
   h+=courseFiches(V.id);
   h+='<section class="stack"><div class="between"><h2 class="h2">Cartes</h2><span class="small muted mono" id="cs-n">'+cards.length+'</span></div>';
@@ -1101,26 +1259,28 @@ function viewImport(){
   const mode=V.mode||'both',ai=hasAI(),pf=S.docs.profile||{};
   const mo=(v,l)=>'<label class="opt"><input type="radio" name="imo" id="imo-'+v+'" value="'+v+'"'+(mode===v?' checked':'')+'><span>'+l+'</span></label>';
   const dirty=draftHasContent();
-  return back('home','Accueil')+'<div class="stack"><h1 class="h1">'+(V.welcome&&pf.firstName?'Bienvenue '+esc(pf.firstName)+' ! ':'')+'Dépose ton cours</h1><p class="muted">Colle ton cours ou charge un fichier : '+(ai?'Mnémo crée automatiquement ton QCM et ta fiche méthode.':'Mnémo prépare ton QCM et ta fiche méthode.')+'</p></div>'
+  return back('home','Accueil')+'<div class="stack">'+(V.welcome&&pf.firstName?'<p class="eyebrow">Bienvenue '+esc(pf.firstName)+'</p>':'')+'<h1 class="h1">Dépose ton cours</h1><p class="muted">Colle ton cours ou charge un fichier. Mnémo crée tout seul ton QCM, tes flashcards et ta fiche méthode.</p></div>'
    +(dirty?'<div class="banner"><div class="grow"><b>Tu as un travail non enregistré</b><span class="small muted" style="display:block">Un nouveau cours le remplacera.</span></div><button class="btn sm" data-a="opendraft" type="button">Le reprendre</button></div>':'')
    +'<form id="imp" class="stack-lg" autocomplete="off" onsubmit="return false">'
-   +'<label class="f" for="imp-title">Titre du cours <small>facultatif</small><input type="text" id="imp-title" maxlength="100"></label>'
    +'<div class="stack"><label class="f" for="imp-text">Contenu du cours<textarea id="imp-text" rows="9" placeholder="Colle ici ton cours, tes notes ou un résumé…"></textarea></label>'
    +'<div class="between small muted"><span id="imp-count" class="mono">0 / '+MAXTEXT.toLocaleString('fr-FR')+' caractères</span><span>environ 25 pages maximum</span></div>'
-   +'<label class="drop" for="imp-file">Charger un fichier .pdf, .txt ou .md</label><input type="file" id="imp-file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" hidden>'
-   +'<p class="err" id="imp-err" hidden></p></div>'
+   +'<label class="drop" for="imp-file">Ou charge un fichier .pdf, .txt ou .md</label><input type="file" id="imp-file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" hidden>'
+   +'<p class="err" id="imp-err" role="alert" hidden></p></div>'
+   +'<label class="f" for="imp-title">Titre du cours <small>facultatif : sinon Mnémo le devine</small><input type="text" id="imp-title" maxlength="100"></label>'
    +'<div class="stack"><span class="small" style="font-weight:600">Que veux-tu créer ?</span><div class="opts">'+mo('qcm','QCM et flashcards')+mo('fiche','Fiche méthode')+mo('both','Les deux')+'</div></div>'
-   +'<div id="imp-qopts" class="stack"'+(mode==='fiche'?' hidden':'')+'>'+(ai?genOpts():'')+'</div>'
-   +(ai?'':'<p class="note">La génération automatique n\'est pas activée ici. Continue : tu pourras copier une consigne dans un chat IA gratuit et coller sa réponse, ou ajouter une clé Gemini gratuite dans les réglages.</p>')
-   +'<div id="imp-prog" class="stack"><div class="wrap">'+(ai?'<button class="btn primary" data-a="impgo" type="button">Créer automatiquement</button>':'<button class="btn primary" data-a="impsave" type="button">Continuer</button>')+'</div></div></form>';
+   +'<div id="imp-qopts" class="stack"'+(mode==='fiche'?' hidden':'')+'>'+genOpts()+'</div>'
+   +'<p class="small muted">'+(ai?'Une IA lit ton cours. Si elle ne répond pas, le moteur intégré de Mnémo prend le relais.':'Mnémo analyse ton texte directement dans ton navigateur : rien n\'est envoyé ailleurs. Relis le résultat avant de l\'enregistrer.')+'</p>'
+   +'<div id="imp-prog" class="stack"><button class="btn primary block" data-a="impgo" type="button">Créer automatiquement</button><button class="btn ghost block" data-a="impsave" type="button">Je préfère utiliser un chat IA</button></div></form>';
 }
 async function submitImport(withGen){
   const val=id=>document.getElementById(id).value;
   const err=m=>{const e=$('#imp-err');e.textContent=m;e.hidden=false;e.scrollIntoView({block:'center'})};
-  const text=cleanText(val('imp-text')).slice(0,MAXTEXT);
+  const raw=cleanText(val('imp-text'));
+  const text=raw.slice(0,MAXTEXT);
   if(text.length<200)return err('Colle un texte plus long (200 caractères minimum) pour que le résultat ait du sens.');
+  if(raw.length>MAXTEXT)toast('Ton cours dépasse '+MAXTEXT.toLocaleString('fr-FR')+' caractères : seule la première partie est utilisée.');
   const out=(document.querySelector('input[name="imo"]:checked')||{}).value||'both';
-  const title=val('imp-title').trim()||'Cours sans titre';
+  const title=val('imp-title').trim()||lcTitle(text);
   const dc=newDraft(title,text);
   if(!withGen){go({name:'draft',id:dc,man:out!=='fiche',fman:out==='fiche'});return}
   const opts=readGen($('#imp')),host=$('#imp-prog');
@@ -1128,9 +1288,8 @@ async function submitImport(withGen){
   let n=0,fid=null;
   if(out!=='fiche')n=await runGeneration(dc,opts,host);
   if(out!=='qcm'&&!G.stop)fid=await runFiche(dc,host);
-  if(!n&&!fid){go({name:'draft',id:dc});toast('Rien généré pour le moment. Réessaie ou utilise un chat IA.');return}
   go({name:'draft',id:dc});
-  toast('Prêt ! Choisis un dossier et clique sur Enregistrer.');
+  if(n||fid)toast('Prêt ! Relis, choisis un dossier et clique sur Enregistrer.');
 }
 
 /* ---------- Vue : révision ---------- */
@@ -1228,7 +1387,7 @@ function shareSection(){
 function aiSection(){
   if(env.sample||CFG.geminiKey)return '';
   const ai=getAI();
-  return '<section class="card stack"><h2 class="h2">Génération automatique <span class="chip">facultatif</span></h2><p class="small muted">Sans clé, dépose ton cours, clique sur « Continuer », puis sur « Coller depuis un chat IA » : tu copies la consigne dans ChatGPT, Gemini ou Mistral et tu colles sa réponse. Avec une clé Gemini gratuite, Mnémo génère tout tout seul. Crée-la sur <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Elle reste dans ton navigateur et n\'est pas incluse dans les sauvegardes.</p>'
+  return '<section class="card stack"><h2 class="h2">Génération par IA <span class="chip">facultatif</span></h2><p class="small muted">Mnémo crée déjà tes QCM et tes fiches sans rien configurer, grâce à son moteur intégré. Pour des questions plus fines, ajoute une clé Gemini gratuite : l\'IA prend alors le relais, et le moteur intégré reste là en secours. Tu peux aussi utiliser « Coller depuis un chat IA » sur la page du résultat. Crée-la sur <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Elle reste dans ton navigateur et n\'est pas incluse dans les sauvegardes.</p>'
    +'<label class="f" for="gk">Clé API Gemini<input type="password" id="gk" data-i="gk" autocomplete="off" value="'+esc(ai.key||'')+'"></label>'
    +'<label class="f" for="gm">Modèle<input type="text" id="gm" data-i="gm" value="'+esc(ai.model||'gemini-2.5-flash')+'"></label></section>';
 }
@@ -1340,13 +1499,22 @@ async function runFiche(cid,host){
   const sub=(S.docs[c.subjectId]||{}).name||'';
   G.ctl=new AbortController();G.busy=true;
   try{
-    host.innerHTML='<p><span class="spin"></span>L\'IA prépare ta fiche méthode… compte environ une minute.</p><button class="btn sm" data-a="stopgen" type="button">Arrêter</button>';
-    const out=await callAI(buildFichePrompt(c.title,sub,c.text),G.ctl.signal);
-    const f=normFiche(out);if(!f)throw{code:'invalid_json'};
-    return addDraftFiche(f,c.title,isDraft(cid)?'':cid,c.subjectId);
-  }catch(e){
-    if(!(e&&e.code==='cancelled'))toast(ERR[e&&e.code]||ERR.upstream_error);
-    return null;
+    let f=null,fell=false;
+    if(hasAI()){
+      host.innerHTML='<p><span class="spin"></span>L\'IA prépare ta fiche méthode… compte environ une minute.</p><button class="btn sm" data-a="stopgen" type="button">Arrêter</button>';
+      try{const out=await callAI(buildFichePrompt(c.title,sub,c.text),G.ctl.signal);f=normFiche(out);if(!f)throw{code:'invalid_json'}}
+      catch(e){if(e&&e.code==='cancelled')return null;fell=true;f=null}
+    }
+    let local=false;
+    if(!f){
+      host.innerHTML='<p><span class="spin"></span>Mnémo rédige ta fiche méthode…</p>';await sleep(350);
+      f=normFiche(localFiche(c.title,c.text));local=true;
+      if(f&&fell)toast("L'IA n'a pas répondu : j'ai utilisé le moteur intégré de Mnémo à la place.");
+    }
+    if(!f){toast('Je n\'ai pas trouvé assez de matière pour une fiche. Colle un cours plus long ou plus structuré.');return null}
+    const id=addDraftFiche(f,c.title,isDraft(cid)?'':cid,c.subjectId);
+    if(local)S.docs[id].local=true;
+    return id;
   }finally{G.busy=false;G.ctl=null}
 }
 function ficheManualPanel(c){
@@ -1618,7 +1786,7 @@ $app.addEventListener('change',async e=>{
       if(txt.length<50)throw new Error('vide');
       const ta=document.getElementById('imp-text');ta.value=(ta.value?ta.value+'\n\n':'')+txt;
       ta.dispatchEvent(new Event('input',{bubbles:true}));
-      const ti=document.getElementById('imp-title');if(!ti.value)ti.value=f.name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ');
+      
     }catch(x){er.style.color='';er.textContent="Impossible de lire ce fichier (un PDF scanné n'a pas de texte). Colle plutôt le texte du cours.";er.hidden=false}
     t.value='';
   }
