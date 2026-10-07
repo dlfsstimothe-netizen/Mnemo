@@ -1,0 +1,1266 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Mnémo transforme tes cours en questions de révision et te les repose au bon moment grâce à la répétition espacée.">
+<meta name="theme-color" content="#0B7F78">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:title" content="Mnémo">
+<meta property="og:description" content="Mnémo transforme tes cours en questions de révision et te les repose au bon moment grâce à la répétition espacée.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230B7F78'/%3E%3Cpath d='M9 22V11l7 6.5L23 11v11' fill='none' stroke='white' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>:root{color-scheme:light;padding-block:env(safe-area-inset-top,0px) env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Mnémo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: une colonne de 720px, en-tête collant ; la révision pose une grande carte au centre, comme une fiche sur un bureau. */
+:root{
+  --bg:#F3F6F7; --surface:#FFFFFF; --surface-2:#E7EDEF; --ink:#11201F; --ink-2:#51636A; --line:#D5DEE1;
+  --accent:#0B7F78; --accent-ink:#FFFFFF; --accent-soft:#D6EFEC;
+  --mark:#C9EBE6; --mark-ink:#11201F;
+  --good:#12805C; --good-soft:#D5F1E5; --bad:#C23A3A; --bad-soft:#F9DCDC; --warn:#9A5A08; --warn-soft:#FBEBCF;
+  --f-display:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --f-body:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --f-mono:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0B1214; --surface:#121C1F; --surface-2:#1A2629; --ink:#E6F0EF; --ink-2:#93A7A9; --line:#243236;
+  --accent:#38C7BA; --accent-ink:#06201E; --accent-soft:#12403E; --mark:#17504C; --mark-ink:#E6F0EF;
+  --good:#4FD1A0; --good-soft:#133A2D; --bad:#FF8A8A; --bad-soft:#431C24; --warn:#E3A44F; --warn-soft:#3F2E12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B1214; --surface:#121C1F; --surface-2:#1A2629; --ink:#E6F0EF; --ink-2:#93A7A9; --line:#243236;
+  --accent:#38C7BA; --accent-ink:#06201E; --accent-soft:#12403E; --mark:#17504C; --mark-ink:#E6F0EF;
+  --good:#4FD1A0; --good-soft:#133A2D; --bad:#FF8A8A; --bad-soft:#431C24; --warn:#E3A44F; --warn-soft:#3F2E12; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 var(--f-body);padding-inline:16px;-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3,p{margin:0}
+.app{max-width:720px;margin:0 auto;padding-block:20px 24px;display:flex;flex-direction:column;gap:20px}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);margin-inline:-16px;padding-inline:16px}
+.top-in{max-width:720px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px}
+.top-r{display:flex;align-items:center;gap:8px;min-width:0}
+.brand{display:inline-flex;align-items:center;gap:10px;background:none;border:0;padding:6px 0;cursor:pointer;font:800 21px/1 var(--f-display);letter-spacing:-.02em;color:var(--ink)}
+.logo svg{display:block}
+.mark{color:var(--accent)}
+.sync{display:inline-flex;align-items:center;gap:6px;font:500 12px var(--f-mono);color:var(--ink-2);white-space:nowrap}
+.sync::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ink-2)}
+.sync.s-cloud::before{background:var(--good)}
+.sync.s-ro::before,.sync.s-local::before{background:var(--warn)}
+.eyebrow{font:500 12px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.h1{font:800 clamp(28px,6vw,38px)/1.08 var(--f-display);letter-spacing:-.02em;text-wrap:balance;overflow-wrap:anywhere}
+.h2{font:700 19px/1.2 var(--f-display);letter-spacing:-.01em}
+.muted{color:var(--ink-2)}
+.small{font-size:14px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.stack{display:flex;flex-direction:column;gap:12px}
+.stack-lg{display:flex;flex-direction:column;gap:20px}
+.wrap{display:flex;flex-wrap:wrap;gap:8px}
+.between{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.grow{flex:1;min-width:0}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 18px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:600;cursor:pointer;text-align:center}
+.btn:hover{border-color:var(--ink-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.sm{min-height:36px;padding:0 12px;font-size:14px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.link{background:none;border:0;padding:4px 0;color:var(--accent);font-weight:600;cursor:pointer;text-align:left}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.item{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;background:none;border:0;border-bottom:1px solid var(--line);text-align:left;cursor:pointer}
+.item:last-child{border-bottom:0}
+button.item:hover{background:var(--surface-2)}
+.item .t{font-weight:600;overflow-wrap:anywhere}
+.dot{flex:none;width:12px;height:12px;border-radius:3px;background:hsl(var(--h,215) 70% 52%)}
+.chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;background:var(--surface-2);font:500 12px var(--f-mono);color:var(--ink-2);white-space:nowrap}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.good{background:var(--good-soft);color:var(--good)}
+.chip.acc{background:var(--accent-soft);color:var(--accent)}
+.meter{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--good);border-radius:99px}
+
+.hero{display:flex;flex-direction:column;gap:16px}
+.hero-n{display:flex;align-items:flex-end;gap:16px}
+.big{font:800 clamp(72px,22vw,112px)/.85 var(--f-display);letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.hero-n p{padding-bottom:6px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stats div{min-width:0}
+.stats b{display:block;font:500 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;height:112px}
+.wd{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%;min-width:0}
+.wd .v{font:500 12px var(--f-mono);color:var(--ink-2)}
+.wd .b{width:100%;max-width:36px;background:var(--accent);border-radius:5px 5px 2px 2px;min-height:3px}
+.wd .b.z{background:var(--surface-2)}
+.wd .l{font:500 11px var(--f-mono);color:var(--ink-2);text-transform:uppercase}
+.wd.today .l{color:var(--ink);font-weight:500}
+
+label.f{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px}
+label.f small{font-weight:400;color:var(--ink-2)}
+input[type=text],input[type=password],input[type=date],select,textarea{width:100%;min-height:46px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
+textarea{resize:vertical;line-height:1.5}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{position:relative;display:inline-flex}
+.opt input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.opt span{display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-weight:600;font-size:14px}
+.opt input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.drop{display:flex;align-items:center;justify-content:center;min-height:56px;border:1.5px dashed var(--line);border-radius:12px;color:var(--ink-2);font-weight:600;cursor:pointer;text-align:center;padding:10px}
+.drop:hover{border-color:var(--accent);color:var(--accent)}
+.err{color:var(--bad);font-size:14px;font-weight:600}
+.note{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:14px}
+
+.qhead{display:flex;align-items:center;gap:12px}
+.qprog{flex:1;height:6px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.qprog i{display:block;height:100%;background:var(--accent);transition:width .25s}
+.qmeta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:14px;color:var(--ink-2)}
+.qcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:clamp(18px,4vw,30px);display:flex;flex-direction:column;gap:20px;box-shadow:0 1px 0 var(--line),0 12px 28px -18px rgba(20,27,46,.35)}
+.qtext{font:600 clamp(21px,4.6vw,27px)/1.3 var(--f-display);letter-spacing:-.01em;overflow-wrap:anywhere}
+.choice{display:flex;align-items:flex-start;gap:12px;width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);text-align:left;cursor:pointer;min-height:52px}
+.choice:hover:not(:disabled){border-color:var(--accent)}
+.choice b{flex:none;display:inline-grid;place-items:center;width:28px;height:28px;border-radius:7px;background:var(--surface-2);font:500 13px var(--f-mono)}
+.choice span{padding-top:2px;overflow-wrap:anywhere}
+.choice.ok{border-color:var(--good);background:var(--good-soft)}
+.choice.ok b{background:var(--good);color:var(--bg)}
+.choice.ko{border-color:var(--bad);background:var(--bad-soft)}
+.choice.ko b{background:var(--bad);color:var(--bg)}
+.choice.dim{opacity:.55}
+.choice:disabled{cursor:default}
+.answer{border-radius:12px;background:var(--surface-2);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.answer .mk{background:linear-gradient(transparent 50%,var(--mark) 50%);color:var(--ink);display:inline;padding-inline:2px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.answer .lbl{font:500 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.rate{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rate button{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:60px;padding:8px 4px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;font-size:14px}
+.rate button small{font:500 11px var(--f-mono);color:var(--ink-2)}
+.rate button:hover{border-color:var(--ink)}
+.rate .g0{color:var(--bad)}.rate .g3{color:var(--good)}
+.verdict{font:700 18px var(--f-display)}
+.verdict.ok{color:var(--good)}.verdict.ko{color:var(--bad)}
+.kbd{font:500 12px var(--f-mono);color:var(--ink-2)}
+.spin{display:inline-block;width:18px;height:18px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--accent);animation:sp .8s linear infinite;vertical-align:-3px;margin-right:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);max-width:min(92vw,520px);background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:20}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+details summary{cursor:pointer;font-weight:600}
+.txt{max-height:240px;overflow:auto;white-space:pre-wrap;font-size:14px;color:var(--ink-2);margin-top:10px;overflow-wrap:anywhere}
+.cardrow{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-bottom:1px solid var(--line)}
+.cardrow:last-child{border-bottom:0}
+.cardrow .q{overflow-wrap:anywhere}
+.tabs{display:flex;gap:4px;max-width:720px;margin:0 auto;padding-bottom:8px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:1 1 auto;min-height:40px;padding:0 8px;font-size:14px;border:0;border-radius:10px;background:none;color:var(--ink-2);font-weight:600;cursor:pointer;white-space:nowrap}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-current=page]{background:var(--accent-soft);color:var(--accent)}
+.svcs{display:grid;gap:12px}
+.svc{display:flex;align-items:center;gap:16px;width:100%;text-align:left;padding:18px;border-radius:16px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer}
+.svc:hover{border-color:var(--accent)}
+.svc b{display:block;font:700 18px/1.25 var(--f-display)}
+.svc .grow>span{display:block;color:var(--ink-2);font-size:14px;margin-top:2px}
+.svc-i{flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:var(--accent-soft);color:var(--accent)}
+.svc.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.svc.primary .grow>span{color:inherit;opacity:.88}
+.svc.primary .svc-i{background:rgba(255,255,255,.2);color:var(--accent-ink)}
+@media (min-width:640px){.svcs{grid-template-columns:1fr 1fr}.svcs .svc:first-child{grid-column:1/-1}}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dow{text-align:center;font:600 11px var(--f-body);color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em;padding-block:4px}
+.day{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:52px;padding:6px 2px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font:600 14px var(--f-body);font-variant-numeric:tabular-nums;color:var(--ink);cursor:pointer}
+.day.blank{border:0;background:none;cursor:default}
+.day.l1{background:color-mix(in srgb,var(--accent) 14%,var(--surface))}
+.day.l2{background:color-mix(in srgb,var(--accent) 28%,var(--surface))}
+.day.l3{background:color-mix(in srgb,var(--accent) 46%,var(--surface))}
+.day.today{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.day[aria-pressed=true]{outline:2px solid var(--ink);outline-offset:1px}
+.ind{display:flex;gap:3px;height:7px}
+.ind i{width:7px;height:7px;border-radius:50%}
+.ind .r{background:var(--accent)}
+.ind .f{background:var(--warn);border-radius:2px}
+.ind .u{border:1.5px solid var(--ink-2)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.cap{display:block}.cap::first-letter{text-transform:uppercase}
+.fiche h2{margin-bottom:2px}
+.fiche ul,.fiche ol{margin:0;padding-left:22px;display:grid;gap:8px}
+.fiche .defs{margin:0;display:grid;gap:10px}
+.fiche .defs dt{font-weight:700}
+.fiche .defs dd{margin:2px 0 0;color:var(--ink-2)}
+.fiche .facts{display:grid;gap:8px}
+.fiche .facts div{display:flex;flex-wrap:wrap;gap:4px 12px;padding:10px 12px;border-radius:10px;background:var(--surface-2)}
+.fiche .facts b{font-weight:700}
+.fiche .pit li::marker{color:var(--warn)}
+@media print{.top,.foot,.noprint,.toast{display:none!important}body{background:#fff;color:#000}.card{border-color:#bbb;break-inside:avoid}}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.qcard.rise{animation:rise .32s cubic-bezier(.2,.7,.2,1) both}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:s}
+.steps li{counter-increment:s;display:grid;grid-template-columns:36px 1fr;column-gap:14px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.steps li::before{content:counter(s);grid-row:span 2;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:800}
+.steps b{font-weight:700}
+.steps span{color:var(--ink-2);font-size:14px}
+.banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:var(--warn-soft);border-radius:14px;padding:14px 16px}
+.foot{max-width:720px;margin:0 auto;padding-block:4px 40px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;color:var(--ink-2);font-size:13px}
+.donut{flex:none}
+a{color:var(--accent)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:420px){.btn{padding:0 14px}.stats b{font-size:19px}}
+</style>
+
+
+</head>
+<body>
+<noscript>Mnémo a besoin de JavaScript pour fonctionner.</noscript>
+<div id="app"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- Constantes & état ---------- */
+const $app=document.getElementById('app'), $toast=document.getElementById('toast');
+const DAY=864e5, MAXTEXT=56000, MAXCARDS=120, MAXDOC=235000, LS='mnemo.v1';
+const TYPES={qcm:'QCM',flash:'Flashcard',open:'Question ouverte',vf:'Vrai / faux'};
+const HUES=[215,12,150,275,42,330,185,95];
+const S={docs:{}};
+let V={name:'home'};
+let Q=null;
+const G={ctl:null,busy:false};
+const env={mode:'pending',db:null,col:null,uid:null,sample:null,downloads:null,synced:false,readOnly:false,unsub:null};
+const writing={},pending={};
+const IN_APP=false;
+
+/* ---------- Utilitaires ---------- */
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rich=s=>esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const sod=t=>{const d=new Date(t);d.setHours(0,0,0,0);return d.getTime()};
+const dk=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const $=s=>document.querySelector(s);
+const plural=(n,a,b)=>n+' '+(n>1?b:a);
+let tt=0;
+function toast(m){$toast.textContent=m;$toast.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>$toast.classList.remove('show'),3800)}
+
+/* ---------- Persistance : compte (db) + copie locale ---------- */
+let mt=0;
+function mirrorLocal(){clearTimeout(mt);mt=setTimeout(()=>{try{localStorage.setItem(LS,JSON.stringify(S.docs))}catch(e){}},300)}
+function loadLocal(){try{const j=localStorage.getItem(LS);if(j){const o=JSON.parse(j);if(o&&typeof o==='object')S.docs=o}}catch(e){}}
+async function writeOnce(id){const d=S.docs[id];if(d===undefined)await env.col.doc(id).delete();else await env.col.doc(id).set(d)}
+function onDbError(e){
+  const c=e&&e.code;
+  if(c==='quota_exceeded'){toast('Espace plein : supprime des cours ou des cartes pour continuer à enregistrer.');return}
+  if(c==='invalid_argument'||c==='not_granted'||c==='revoked'||c==='capability_disabled'||c==='capability_removed'){
+    env.readOnly=true;env.mode='ro';if(env.unsub){try{env.unsub()}catch(x){}env.unsub=null}env.col=null;
+    toast("Ce compte ne peut pas enregistrer ici : tes données restent sur cet appareil.");refreshChrome();return}
+  toast('Sauvegarde impossible pour le moment. Réessaie dans un instant.');
+}
+function persist(id){
+  if(!env.col||env.readOnly)return;
+  pending[id]=true;if(writing[id])return;writing[id]=true;
+  (async()=>{
+    while(pending[id]){
+      pending[id]=false;
+      try{try{await writeOnce(id)}catch(e){if(e&&e.code==='unavailable'){await sleep(900);await writeOnce(id)}else throw e}}
+      catch(e){onDbError(e);break}
+    }
+    writing[id]=false;
+  })();
+}
+function put(id,data){S.docs[id]=data;mirrorLocal();persist(id)}
+function del(id){delete S.docs[id];mirrorLocal();persist(id)}
+function touch(id){mirrorLocal();persist(id)}
+
+function refreshChrome(){const el=$('.sync');if(el){el.className='sync s-'+env.mode;el.textContent=syncLabel()}}
+function syncLabel(){return env.mode==='cloud'?'Synchronisé':env.mode==='pending'||env.mode==='sync'?'Connexion…':'Sur cet appareil'}
+
+function subscribe(){
+  env.mode='sync';
+  env.unsub=env.col.onSnapshot(snap=>{
+    const remote={};
+    snap.docs.forEach(d=>{const v=d.data();if(v)remote[d.id]=JSON.parse(JSON.stringify(v))});
+    if(!env.synced){
+      if(snap.metadata.fromCache&&snap.empty)return;
+      env.synced=true;
+      if(snap.empty&&Object.keys(S.docs).length){
+        env.mode='cloud';Object.keys(S.docs).forEach(persist);refreshChrome();return}
+      if(!snap.empty){try{localStorage.setItem(LS+'.backup',JSON.stringify(S.docs))}catch(e){}}
+    }
+    if(env.readOnly)return;
+    env.mode='cloud';
+    Object.keys(S.docs).forEach(id=>{if(!(id in remote)&&!writing[id]&&!pending[id])delete S.docs[id]});
+    Object.keys(remote).forEach(id=>{if(!writing[id]&&!pending[id])S.docs[id]=remote[id]});
+    mirrorLocal();softRender();refreshChrome();
+  },err=>{
+    env.mode='local';env.col=null;refreshChrome();
+    toast('Connexion au compte perdue : tes données restent sur cet appareil.')});
+}
+async function initCaps(){
+  const use=()=>Promise.resolve(null);
+  const [db,user,sample,dl]=await Promise.all([use('db'),use('user'),use('sample'),use('downloads')]);
+  env.sample=sample;env.downloads=dl;
+  let id=null;try{id=user?await user.id():null}catch(e){}
+  if(db&&id){env.db=db;env.uid=id;env.col=db.collection('data/users/'+id);subscribe()}
+  else env.mode='local';
+  refreshChrome();
+  if(V.name==='import'||V.name==='course')softRender();
+}
+
+/* ---------- Accès aux données ---------- */
+const subjects=()=>Object.keys(S.docs).filter(k=>k.startsWith('s_')).map(id=>Object.assign({id},S.docs[id])).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+const coursesOf=sid=>Object.keys(S.docs).filter(k=>k.startsWith('c_')&&S.docs[k].subjectId===sid).map(id=>Object.assign({id},S.docs[id])).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+const settings=()=>{const s=S.docs.settings||(S.docs.settings={newPerDay:15,days:{}});if(!s.days)s.days={};if(!s.newPerDay)s.newPerDay=15;return s};
+const getCard=(cid,kid)=>{const c=S.docs[cid];return c&&c.cards?c.cards.find(k=>k.id===kid):undefined};
+function scoped(scope){
+  const out=[];
+  for(const id of Object.keys(S.docs)){
+    if(!id.startsWith('c_'))continue;const c=S.docs[id];
+    if(scope.kind==='subject'&&c.subjectId!==scope.id)continue;
+    if(scope.kind==='course'&&id!==scope.id)continue;
+    for(const k of (c.cards||[]))out.push({cid:id,card:k});
+  }
+  return out;
+}
+function counts(scope){
+  const now=Date.now(),L=scoped(scope);let due=0,nw=0,mature=0;
+  for(const x of L){const k=x.card;if(!k.reps)nw++;else{if(k.due<=now)due++;if((k.interval||0)>=7)mature++}}
+  return{total:L.length,due,nw,mature};
+}
+function newLeft(){const st=settings(),d=st.days[dk(Date.now())];return Math.max(0,st.newPerDay-(d?d.nw||0:0))}
+function lastDays(n){
+  const st=settings(),out=[],names=['D','L','M','M','J','V','S'];
+  for(let i=n-1;i>=0;i--){const t=Date.now()-i*DAY,d=st.days[dk(t)]||{};out.push({n:d.n||0,ok:d.ok||0,l:names[new Date(t).getDay()],today:i===0})}
+  return out;
+}
+function streak(){
+  const st=settings();let t=Date.now(),n=0;
+  if(!(st.days[dk(t)]||{}).n)t-=DAY;
+  while((st.days[dk(t)]||{}).n){n++;t-=DAY;if(n>3650)break}
+  return n;
+}
+
+/* ---------- Répétition espacée ---------- */
+function nextInt(k,g){
+  const i=k.interval||0,e=k.ease||2.5;
+  if(g===0)return 0;
+  if(g===1)return Math.max(1,Math.round(i*1.2));
+  if(g===2)return i===0?1:Math.max(i+1,Math.round(i*e));
+  return i===0?3:Math.max(i+2,Math.round(i*e*1.3));
+}
+function ivLabel(n){if(n<=0)return'Revoir';if(n===1)return'1 j';if(n<30)return n+' j';if(n<365)return Math.round(n/30)+' mois';return'1 an'}
+function applyRating(item,g){
+  const course=S.docs[item.cid];if(!course)return;
+  const k=(course.cards||[]).find(x=>x.id===item.kid);if(!k)return;
+  const st=settings(),key=dk(Date.now());
+  const day=st.days[key]||(st.days[key]={n:0,ok:0,nw:0});
+  const sched=Q.mode==='due',correct=g>=1;
+  if(!item.re){
+    day.n++;if(correct)day.ok++;
+    day.cs=day.cs||{};day.cs[item.cid]=(day.cs[item.cid]||0)+1;
+    k.lastOk=correct;k.last=Date.now();
+    if(sched){
+      const first=!k.reps;
+      if(g===0){if(!first)k.lapses=(k.lapses||0)+1;k.interval=0;k.due=Date.now()}
+      else{const ni=nextInt(k,g);k.interval=ni;k.due=sod(Date.now())+ni*DAY}
+      k.ease=clamp((k.ease||2.5)+[-0.2,-0.15,0,0.1][g],1.3,3);
+      k.reps=(k.reps||0)+1;if(first)day.nw++;
+    }
+  }else if(sched&&g>=1){k.interval=1;k.due=sod(Date.now())+DAY}
+  const keys=Object.keys(st.days);
+  if(keys.length>420){keys.sort().slice(0,keys.length-400).forEach(x=>delete st.days[x])}
+  touch(item.cid);touch('settings');
+}
+function buildSession(mode,scope){
+  const now=Date.now(),L=scoped(scope);let items;
+  if(mode==='due'){
+    const due=shuffle(L.filter(x=>x.card.reps>0&&x.card.due<=now)).sort((a,b)=>a.card.due-b.card.due);
+    const nw=shuffle(L.filter(x=>!x.card.reps)).slice(0,newLeft());
+    items=due.concat(nw);
+  }else if(mode==='weak'){
+    items=shuffle(L.filter(x=>x.card.reps>0&&(x.card.lapses>0||x.card.lastOk===false||(x.card.ease||2.5)<2.2)));
+  }else items=shuffle(L);
+  return items.slice(0,60).map(x=>({cid:x.cid,kid:x.card.id,re:false}));
+}
+function startQuiz(mode,scope){
+  const queue=buildSession(mode,scope);
+  if(!queue.length){toast(mode==='weak'?'Aucun point faible pour le moment.':"Rien à réviser ici pour l'instant.");return}
+  Q={mode,scope,queue,pos:0,stage:'ask',anim:true,picked:null,typed:'',results:[],back:{name:V.name,id:V.id}};
+  go({name:'quiz'});
+}
+
+/* ---------- Génération par IA ---------- */
+const ERR={not_granted:"Tu as refusé l'accès à l'IA pour cette page. Recharge la page pour réessayer.",sampling_disabled:"La génération par IA n'est pas disponible avec ce compte.",rate_limited:"Trop de demandes ou limite d'usage atteinte. Réessaie plus tard.",session_expired:"Ta session a expiré. Reconnecte-toi puis réessaie.",refused:"L'IA n'a pas pu traiter ce texte. Essaie avec un autre extrait.",invalid_json:"La réponse n'était pas exploitable. Réessaie, ou demande moins de questions.",empty_completion:"Réponse vide. Réessaie.",prompt_too_large:"Le texte est trop long pour une seule demande.",upstream_error:"Problème de connexion avec l'IA. Réessaie.",bad_key:"Clé refusée par Google. Vérifie-la dans les réglages.",no_ai:"Aucune IA connectée. Utilise « Coller depuis un chat IA »."};
+const AIK='mnemo.ai';
+function getAI(){try{return JSON.parse(localStorage.getItem(AIK))||{}}catch(e){return{}}}
+function setAI(o){try{localStorage.setItem(AIK,JSON.stringify(o))}catch(e){}}
+const hasAI=()=>!!env.sample||!!getAI().key;
+function parseLoose(t){
+  if(typeof t!=='string')return t;
+  t=t.trim().replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'');
+  try{return JSON.parse(t)}catch(e){}
+  const a=t.search(/[\[{]/),b=Math.max(t.lastIndexOf(']'),t.lastIndexOf('}'));
+  if(a>=0&&b>a){try{return JSON.parse(t.slice(a,b+1))}catch(e){}}
+  return null;
+}
+async function callAI(prompt,signal){
+  if(env.sample)return env.sample.json(prompt,{signal});
+  const ai=getAI();if(!ai.key)throw{code:'no_ai'};
+  let r;
+  try{r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(ai.model||'gemini-2.5-flash')+':generateContent',{method:'POST',signal,headers:{'Content-Type':'application/json','x-goog-api-key':ai.key},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0.4}})})}
+  catch(e){throw{code:e&&e.name==='AbortError'?'cancelled':'upstream_error'}}
+  if(!r.ok)throw{code:r.status===429?'rate_limited':(r.status===400||r.status===401||r.status===403)?'bad_key':'upstream_error'};
+  const j=await r.json().catch(()=>null);
+  const parts=j&&j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts;
+  const out=parseLoose(parts?parts.map(p=>p.text||'').join(''):'');
+  if(out==null)throw{code:'invalid_json'};
+  return out;
+}
+function chunkText(t){
+  const n=Math.min(5,Math.max(1,Math.ceil(t.length/14000))),size=Math.ceil(t.length/n);
+  if(n===1)return[t];
+  let paras=[];
+  for(let p of t.split(/\n{2,}/)){while(p.length>size*1.5){let cut=p.lastIndexOf('. ',size);if(cut<size*.5)cut=size;paras.push(p.slice(0,cut+1));p=p.slice(cut+1)}if(p.trim())paras.push(p)}
+  const out=[];let cur='';
+  for(const p of paras){cur=cur?cur+'\n\n'+p:p;if(cur.length>=size){out.push(cur);cur=''}}
+  if(cur)out.push(cur);
+  return out;
+}
+function buildPrompt(course,subject,chunk,n,types,extra,known,idx,total){
+  const spec={
+    qcm:'{"type":"qcm","q":"question","choices":["choix","choix","choix","choix"],"answer":0,"explain":"pourquoi c\'est la bonne réponse"}  // 4 choix plausibles, answer = index (0 à 3) de la bonne réponse',
+    flash:'{"type":"flash","q":"notion, terme ou question courte","a":"réponse concise, 1 à 3 phrases"}',
+    open:'{"type":"open","q":"question de compréhension qui demande de réfléchir","a":"réponse modèle attendue, 2 à 4 phrases"}',
+    vf:'{"type":"vf","q":"affirmation précise","answer":true,"explain":"pourquoi c\'est vrai ou faux"}  // answer vaut true ou false'};
+  return "Tu es un professeur qui prépare des cartes de révision à partir d'un cours.\n"
+   +"Matière : "+subject+"\nTitre du cours : "+course+(total>1?"\nExtrait "+idx+" sur "+total+" du cours.":"")+"\n\n"
+   +"Rédige exactement "+n+" cartes de révision, dans la langue du cours, en te basant UNIQUEMENT sur le texte fourni. Va à l'essentiel : définitions, mécanismes, formules, dates, causes et conséquences, pièges fréquents. Une idée par carte, réponses vérifiables dans le texte. Évite les détails sans importance.\n"
+   +"Mélange équilibré des types suivants : "+types.join(', ')+".\n\n"
+   +"Réponds uniquement par un tableau JSON, sans texte autour. Formats :\n"+types.map(t=>spec[t]).join('\n')+"\n"
+   +(extra?"\nConsigne de l'élève : "+extra+"\n":"")
+   +(known.length?"\nQuestions déjà créées (ne les répète pas) :\n"+known.map(q=>"- "+q).join('\n')+"\n":"")
+   +"\nTexte du cours :\n\"\"\"\n"+chunk+"\n\"\"\"";
+}
+function normCard(x){
+  if(!x||typeof x!=='object')return null;
+  const str=v=>typeof v==='string'?v.trim().slice(0,1500):'';
+  const type=['qcm','flash','open','vf'].includes(x.type)?x.type:null,q=str(x.q);
+  if(!type||!q)return null;
+  const k={id:uid()+Math.random().toString(36).slice(2,5),type,q,ease:2.5,interval:0,reps:0,lapses:0,due:0,lastOk:null};
+  if(type==='qcm'){
+    let ch=Array.isArray(x.choices)?x.choices.map(str).filter(Boolean):[];const a=Number(x.answer);
+    if(ch.length<3||!Number.isInteger(a)||a<0||a>=ch.length)return null;
+    const idx=shuffle(ch.map((_,i)=>i));k.choices=idx.map(i=>ch[i]);k.answer=idx.indexOf(a);k.explain=str(x.explain);
+  }else if(type==='vf'){
+    const v=x.answer;k.answer=v===true||v==='true'||v==='vrai';if(!(v===true||v===false||v==='true'||v==='false'||v==='vrai'||v==='faux'))return null;k.explain=str(x.explain);
+  }else{k.a=str(x.a);if(!k.a)return null}
+  return k;
+}
+const docBytes=d=>new Blob([JSON.stringify(d)]).size;
+function addCards(cid,cards){
+  const c=S.docs[cid];if(!c)return{added:0,full:false};
+  c.cards=c.cards||[];let added=0,full=false;
+  for(const k of cards){
+    if(c.cards.length>=MAXCARDS){full=true;break}
+    c.cards.push(k);
+    if(docBytes(c)>MAXDOC){c.cards.pop();full=true;break}
+    added++;
+  }
+  if(added)put(cid,c);
+  return{added,full};
+}
+function readGen(root){
+  const q=s=>root.querySelector(s),all=s=>Array.from(root.querySelectorAll(s));
+  let types=all('input[name="gt"]:checked').map(i=>i.value);if(!types.length)types=['qcm','flash','open','vf'];
+  const r=q('input[name="gn"]:checked');
+  return{count:r?Number(r.value):20,types,extra:(q('[name="gx"]')||{}).value||''};
+}
+function genOpts(){
+  const t=(v,l,c)=>'<label class="opt"><input type="checkbox" name="gt" value="'+v+'" id="gt-'+v+'"'+(c?' checked':'')+'><span>'+l+'</span></label>';
+  const n=(v)=>'<label class="opt"><input type="radio" name="gn" value="'+v+'" id="gn-'+v+'"'+(v===20?' checked':'')+'><span>'+v+'</span></label>';
+  return '<div class="stack"><div class="stack"><span class="small" style="font-weight:600">Nombre de questions</span><div class="opts">'+[10,20,30,40].map(n).join('')+'</div></div>'
+   +'<div class="stack"><span class="small" style="font-weight:600">Types de cartes</span><div class="opts">'+t('qcm','QCM',1)+t('flash','Flashcards',1)+t('open','Questions ouvertes',1)+t('vf','Vrai / faux',1)+'</div></div>'
+   +'<label class="f" for="gx">Consigne pour l\'IA <small>facultatif, ex. « insiste sur les formules »</small><input type="text" id="gx" name="gx" maxlength="200"></label></div>';
+}
+async function runGeneration(cid,opts,host){
+  const c=S.docs[cid];if(!c||!c.text)return 0;
+  const sub=(S.docs[c.subjectId]||{}).name||'';
+  const chunks=chunkText(c.text);
+  const per=clamp(Math.ceil(opts.count/chunks.length),3,20);
+  G.ctl=new AbortController();G.busy=true;
+  let total=0,err=null;
+  try{
+    for(let i=0;i<chunks.length;i++){
+      if(G.ctl.signal.aborted)break;
+      host.innerHTML='<p><span class="spin"></span>L\'IA lit ton cours'+(chunks.length>1?' (partie '+(i+1)+' sur '+chunks.length+')':'')+'… ça prend en général une à deux minutes.</p>'
+        +(total?'<p class="small muted">'+plural(total,'carte prête','cartes prêtes')+' pour l\'instant.</p>':'')
+        +'<button class="btn sm" data-a="stopgen" type="button">Arrêter</button>';
+      const known=(S.docs[cid].cards||[]).slice(-60).map(k=>k.q.slice(0,90));
+      let arr;
+      try{arr=await callAI(buildPrompt(c.title,sub,chunks[i],per,opts.types,opts.extra.trim(),known,i+1,chunks.length),G.ctl.signal)}
+      catch(e){if(e&&e.code==='cancelled')break;err=e;break}
+      if(arr&&!Array.isArray(arr)&&Array.isArray(arr.cards))arr=arr.cards;
+      if(!Array.isArray(arr)){err={code:'invalid_json'};break}
+      const r=addCards(cid,arr.map(normCard).filter(Boolean));
+      total+=r.added;
+      if(r.full){toast('Limite atteinte : '+MAXCARDS+' cartes par cours. Crée un autre cours pour la suite.');break}
+    }
+  }finally{G.busy=false;G.ctl=null}
+  if(err){toast(ERR[err.code]||ERR.upstream_error);}
+  else if(total)toast(plural(total,'carte ajoutée','cartes ajoutées')+'.');
+  return total;
+}
+
+/* ---------- Lecture de fichiers ---------- */
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('script'));document.head.appendChild(s)})}
+async function pdfToText(file){
+  const base='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  if(!window.pdfjsLib){await loadScript(base+'pdf.min.js');await loadScript(base+'pdf.worker.min.js')}
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc=base+'pdf.worker.min.js';
+  const doc=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+  let out='';
+  for(let p=1;p<=doc.numPages;p++){
+    const tc=await (await doc.getPage(p)).getTextContent();
+    out+=tc.items.map(i=>i.str+(i.hasEOL?'\n':' ')).join('')+'\n\n';
+    if(out.length>MAXTEXT*1.3)break;
+  }
+  return out;
+}
+const cleanText=t=>t.replace(/\r/g,'').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+
+/* ---------- Navigation & rendu ---------- */
+function go(v){V=v;if(v.name!=='quiz')Q=v.name==='quiz'?Q:Q;render();window.scrollTo(0,0)}
+const locked=()=>V.name==='quiz'||V.name==='import'||V.name==='signup'||V.name==='settings'||!!V.edit||!!V.gen||!!V.man||!!V.fman||!!V.fgen||!!V.rename||!!V.renameC||G.busy;
+function softRender(){
+  if(V.name==='signup'&&S.docs.profile){go({name:'home'});return}
+  if(!locked())render();
+}
+function chrome(){
+  const active=V.name==='fiches'||V.name==='fiche'?'fiches':V.name==='calendar'?'calendar':V.name==='settings'?'settings':'home';
+  const nav=(S.docs.profile&&V.name!=='quiz')?'<nav class="tabs" aria-label="Navigation">'+[['home','Accueil'],['fiches','Fiches'],['calendar','Calendrier'],['settings','Réglages']].map(q=>'<button data-a="'+q[0]+'"'+(active===q[0]?' aria-current="page"':'')+'>'+q[1]+'</button>').join('')+'</nav>':'';
+  return '<header class="top"><div class="top-in"><button class="brand" data-a="home" aria-label="Mnémo, accueil"><span class="logo" aria-hidden="true"><svg viewBox="0 0 32 32" width="30" height="30"><rect width="32" height="32" rx="9" style="fill:var(--accent)"/><path d="M9 22V11l7 6.5L23 11v11" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--accent-ink)"/></svg></span><span>Mnémo</span></button>'
+   +'<div class="top-r"><span class="sync s-'+env.mode+'">'+syncLabel()+'</span></div></div>'+nav+'</header>';
+}
+function render(){
+  if(!S.docs.profile&&V.name!=='signup')V={name:'signup'};
+  let h='';
+  switch(V.name){
+    case 'signup':h=viewSignup();break;
+    case 'subject':h=viewSubject();break;
+    case 'course':h=viewCourse();break;
+    case 'import':h=viewImport();break;
+    case 'quiz':h=viewQuiz();break;
+    case 'settings':h=viewSettings();break;
+    case 'calendar':h=viewCalendar();break;
+    case 'fiches':h=viewFiches();break;
+    case 'fiche':h=viewFiche();break;
+    default:h=viewHome();
+  }
+  $app.innerHTML=chrome()+'<main class="app">'+h+'</main>'+(V.name==='quiz'||V.name==='signup'?'':footer());
+  if(V.name==='quiz'&&Q&&Q.stage==='reveal'){const b=$app.querySelector('.rate button.g2')||$app.querySelector('.btn.primary[data-a=rate]');if(b)b.focus({preventScroll:true})}
+}
+const back=(a,l)=>'<button class="link" data-a="'+a+'">← '+l+'</button>';
+const missing=()=>back('home','Accueil')+'<p>Cet élément n\'existe plus.</p>';
+
+function forecast(){
+  const now=Date.now(),b=sod(now);let t=0,w=0;
+  for(const x of scoped({kind:'all'})){const k=x.card;if(!k.reps||k.due<=now)continue;const d=Math.round((k.due-b)/DAY);if(d===1)t++;if(d>=1&&d<=7)w++}
+  return{tomorrow:t,week:w};
+}
+function backupBanner(all){
+  const st=settings(),now=Date.now();
+  if(env.mode==='cloud'||all.total<10)return'';
+  if(now-(st.lastExport||0)<14*DAY||now<(st.remindAt||0))return'';
+  return '<section class="banner"><div class="grow"><b>Pense à sauvegarder tes cours</b><span class="small muted" style="display:block">Tes données sont dans ce navigateur. Un export les met à l\'abri.</span></div><div class="wrap"><button class="btn sm primary" data-a="export">Exporter</button><button class="btn sm ghost" data-a="snooze">Plus tard</button></div></section>';
+}
+const footer=()=>'<footer class="foot"><span>Mnémo · '+(env.mode==='cloud'?'tes cours sont enregistrés sur ton compte':'tes cours restent dans ce navigateur')+'</span><button class="link" data-a="settings">Réglages et sauvegarde</button></footer>';
+function applyTheme(){
+  if(IN_APP)return;
+  let v='';try{v=localStorage.getItem('mnemo.theme')||''}catch(e){}
+  if(v==='light'||v==='dark')document.documentElement.setAttribute('data-theme',v);else document.documentElement.removeAttribute('data-theme');
+}
+function themeSection(){
+  if(IN_APP)return'';
+  let v='';try{v=localStorage.getItem('mnemo.theme')||''}catch(e){}
+  return '<section class="card stack"><h2 class="h2">Apparence</h2><label class="f" for="thm">Thème<select id="thm" data-i="thm">'+[['','Automatique'],['light','Clair'],['dark','Sombre']].map(q=>'<option value="'+q[0]+'"'+(q[0]===v?' selected':'')+'>'+q[1]+'</option>').join('')+'</select></label></section>';
+}
+const isWeak=k=>k.reps>0&&(k.lapses>0||k.lastOk===false||(k.ease||2.5)<2.2);
+function applyCardFilter(){
+  const q=((document.getElementById('cs-q')||{}).value||'').trim().toLowerCase();
+  const f=(document.querySelector('input[name="cfl"]:checked')||{}).value||'all';
+  let n=0;
+  document.querySelectorAll('#cs-list .cardrow').forEach(r=>{
+    const okq=!q||r.dataset.s.indexOf(q)>=0;
+    const okf=f==='all'||(f==='weak'?r.dataset.w==='1':r.dataset.st===f);
+    r.hidden=!(okq&&okf);if(!r.hidden)n++;
+  });
+  const c=document.getElementById('cs-n');if(c)c.textContent=n;
+}
+
+/* ---------- Vue : accueil ---------- */
+const ICON={
+  qcm:'<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="3"/><path d="M8 9l1.6 1.6L12.5 7.7M8 15.5h8M14 10h2.5"/></svg>',
+  fiche:'<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5V8h4M9 12h6M9 15.5h6"/></svg>',
+  cal:'<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>'};
+function services(){
+  return '<section class="stack"><h2 class="h2">Que veux-tu faire ?</h2><div class="svcs">'
+   +'<button class="svc primary" data-a="import" data-m="qcm"><span class="svc-i">'+ICON.qcm+'</span><span class="grow"><b>QCM pour apprendre vite</b><span>Téléverse un cours et révise-le en questionnaires et flashcards.</span></span></button>'
+   +'<button class="svc" data-a="import" data-m="fiche"><span class="svc-i">'+ICON.fiche+'</span><span class="grow"><b>Fiche méthode intelligente</b><span>Téléverse un cours et obtiens une fiche claire : résumé, notions clés, méthode, pièges.</span></span></button>'
+   +'<button class="svc" data-a="calendar"><span class="svc-i">'+ICON.cal+'</span><span class="grow"><b>Mon calendrier</b><span>Suis les cours révisés et les fiches créées, jour après jour.</span></span></button>'
+   +'</div></section>';
+}
+function viewHome(){
+  const subs=subjects(),all=counts({kind:'all'}),pf=S.docs.profile||{};
+  const fiches=Object.keys(S.docs).filter(k=>k.startsWith('f_')).map(id=>Object.assign({id},S.docs[id])).sort((a,b)=>b.createdAt-a.createdAt);
+  const nw=Math.min(all.nw,newLeft()),todayN=all.due+nw;
+  const td=(settings().days[dk(Date.now())]||{}).n||0;
+  const prog=td?'<div class="stack" style="gap:6px"><div class="meter"><i style="width:'+Math.round(td/(td+todayN)*100)+'%"></i></div><span class="small muted">'+td+(td>1?' cartes faites':' carte faite')+' aujourd\'hui</span></div>':'';
+  const hr=new Date().getHours(),hello=(hr>=18||hr<5?'Bonsoir':'Bonjour')+(pf.firstName?', '+esc(pf.firstName):'');
+  const date=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  if(!all.total&&!subs.length&&!fiches.length){
+    return '<section class="hero"><p class="eyebrow">'+esc(date)+'</p><h1 class="h1">'+hello+'. <span class="mark">Par où commence-t-on ?</span></h1><p class="muted">Téléverse un cours : Mnémo le transforme en questions pour apprendre vite, ou en fiche méthode claire.</p></section>'+services();
+  }
+  let h='<section class="hero"><p class="eyebrow">'+esc(date)+'</p><p class="h2">'+hello+'</p>';
+  if(todayN>0){
+    h+='<div class="hero-n"><span class="big">'+todayN+'</span><p>'+(todayN>1?'cartes':'carte')+' à réviser<br><span class="muted small">'+all.due+' à revoir · '+nw+(nw>1?' nouvelles':' nouvelle')+'</span></p></div>'
+     +prog+'<div class="wrap"><button class="btn primary" data-a="start" data-m="due" data-k="all">Réviser maintenant</button></div>';
+  }else{
+    h+='<h1 class="h1">'+(all.total?'Tout est à jour.':'Pas encore de cartes.')+'</h1><p class="muted">'
+     +(all.total?'Rien à revoir pour aujourd\'hui. Tu peux quand même t\'entraîner en révision libre.':'Téléverse un cours pour créer tes premières questions.')+'</p>'
+     +(all.total?'<div class="wrap"><button class="btn primary" data-a="start" data-m="free" data-k="all">Révision libre</button></div>':'');
+  }
+  h+='</section>'+services();
+  const fcs=forecast(),fc='<p class="small muted">À venir : <span class="mono">'+fcs.tomorrow+'</span> demain · <span class="mono">'+fcs.week+'</span> sur les 7 prochains jours</p>';
+  const wk=lastDays(7),mx=Math.max.apply(null,wk.map(d=>d.n)),w7=wk.reduce((a,d)=>a+d.n,0),o7=wk.reduce((a,d)=>a+d.ok,0);
+  h+=backupBanner(all);
+  h+='<section class="card stack"><div class="stats"><div><span class="muted small">Série</span><b>'+streak()+' j</b></div><div><span class="muted small">Maîtrisées</span><b>'+all.mature+'/'+all.total+'</b></div><div><span class="muted small">Réussite 7 j</span><b>'+(w7?Math.round(o7/w7*100)+' %':'–')+'</b></div></div>'
+   +fc+'<div class="week" role="img" aria-label="Cartes révisées sur les 7 derniers jours">'
+   +wk.map(d=>'<div class="wd'+(d.today?' today':'')+'"><span class="v">'+(d.n||'')+'</span><div class="b'+(d.n?'':' z')+'" style="height:'+(d.n&&mx?Math.max(6,Math.round(d.n/mx*70)):3)+'px"></div><span class="l">'+d.l+'</span></div>').join('')+'</div></section>';
+  if(subs.length){
+    h+='<section class="stack"><h2 class="h2">Matières</h2><div class="list">'+subs.map(s=>{const c=counts({kind:'subject',id:s.id}),pc=c.total?Math.round(c.mature/c.total*100):0;
+      return '<button class="item" data-a="subject" data-id="'+s.id+'"><span class="dot" style="--h:'+(s.hue||215)+'"></span><span class="grow"><span class="t">'+esc(s.name)+'</span><span class="muted small" style="display:block">'+plural(c.total,'carte','cartes')+(c.due?' · '+c.due+' à revoir':'')+'</span><span class="meter" style="display:block;margin-top:8px"><i style="width:'+pc+'%"></i></span></span></button>'}).join('')+'</div></section>';
+  }
+  if(fiches.length){
+    h+='<section class="stack"><div class="between"><h2 class="h2">Mes dernières fiches</h2><button class="btn sm" data-a="fiches">Tout voir</button></div><div class="list">'
+     +fiches.slice(0,3).map(f=>'<button class="item" data-a="openfiche" data-id="'+f.id+'"><span class="grow"><span class="t">'+esc(f.title)+'</span><span class="muted small" style="display:block">'+esc((S.docs[f.subjectId]||{}).name||'')+' · '+fmtDay(f.createdAt)+'</span></span><span class="muted">›</span></button>').join('')+'</div></section>';
+  }
+  return h;
+}
+/* ---------- Vue : matière ---------- */
+function viewSubject(){
+  const s=S.docs[V.id];if(!s)return missing();
+  const c=counts({kind:'subject',id:V.id}),cs=coursesOf(V.id);
+  let h=back('home','Accueil')+'<div class="stack"><div style="display:flex;gap:12px;align-items:center"><span class="dot" style="--h:'+(s.hue||215)+';width:16px;height:16px"></span><h1 class="h1">'+esc(s.name)+'</h1></div>'
+   +'<p class="muted">'+plural(c.total,'carte','cartes')+' · '+c.due+' à revoir · '+c.nw+(c.nw>1?' nouvelles':' nouvelle')+' · '+c.mature+' maîtrisées</p></div>';
+  h+='<div class="wrap"><button class="btn primary" data-a="start" data-m="due" data-k="subject" data-id="'+V.id+'">Réviser</button><button class="btn" data-a="start" data-m="free" data-k="subject" data-id="'+V.id+'">Révision libre</button><button class="btn" data-a="start" data-m="weak" data-k="subject" data-id="'+V.id+'">Points faibles</button></div>';
+  h+='<section class="stack"><div class="between"><h2 class="h2">Cours</h2><button class="btn sm" data-a="import" data-id="'+V.id+'">+ Cours</button></div>';
+  h+=cs.length?'<div class="list">'+cs.map(x=>{const cc=counts({kind:'course',id:x.id});return '<button class="item" data-a="course" data-id="'+x.id+'"><span class="grow"><span class="t">'+esc(x.title)+'</span><span class="muted small" style="display:block">'+plural(cc.total,'carte','cartes')+(cc.due?' · '+cc.due+' à revoir':'')+'</span></span><span class="muted">›</span></button>'}).join('')+'</div>':'<p class="muted">Aucun cours dans cette matière.</p>';
+  h+='</section><section class="card stack"><h2 class="h2">Gérer la matière</h2>';
+  if(V.rename){h+='<label class="f" for="rn">Nom<input type="text" id="rn" value="'+esc(s.name)+'" maxlength="60"></label><div class="wrap"><button class="btn primary sm" data-a="saverename">Enregistrer</button><button class="btn sm ghost" data-a="subject" data-id="'+V.id+'">Annuler</button></div>'}
+  else h+='<div class="wrap"><button class="btn sm" data-a="rename">Renommer</button>'+(V.confirm==='delsub'?'<button class="btn sm danger" data-a="delsub">Confirmer la suppression</button>':'<button class="btn sm danger" data-a="askdelsub">Supprimer la matière</button>')+'</div>'
+   +(V.confirm==='delsub'?'<p class="small muted">Les cours et cartes de cette matière seront supprimés.</p>':'');
+  return h+'</section>';
+}
+
+/* ---------- Vue : cours ---------- */
+const statusOf=k=>!k.reps?'<span class="chip acc">Nouvelle</span>':k.due<=Date.now()?'<span class="chip warn">À revoir</span>':'<span class="chip">dans '+Math.max(1,Math.ceil((k.due-Date.now())/DAY))+' j</span>';
+function cardEditor(){
+  const e=V.edit,d=e.draft||{},t=d.type||'flash';
+  const rows=[];
+  rows.push('<label class="f" for="cf-type">Type<select id="cf-type" data-i="cftype"'+(e.cid2?' disabled':'')+'>'+Object.keys(TYPES).map(k=>'<option value="'+k+'"'+(k===t?' selected':'')+'>'+TYPES[k]+'</option>').join('')+'</select></label>');
+  rows.push('<label class="f" for="cf-q">'+(t==='vf'?'Affirmation':'Question')+'<textarea id="cf-q" rows="2">'+esc(d.q||'')+'</textarea></label>');
+  if(t==='flash'||t==='open')rows.push('<label class="f" for="cf-a">Réponse<textarea id="cf-a" rows="3">'+esc(d.a||'')+'</textarea></label>');
+  if(t==='vf')rows.push('<label class="f" for="cf-vf">Réponse<select id="cf-vf"><option value="1"'+(d.answer!==false?' selected':'')+'>Vrai</option><option value="0"'+(d.answer===false?' selected':'')+'>Faux</option></select></label>');
+  if(t==='qcm'){
+    const ch=d.choices||['','','',''];
+    for(let i=0;i<4;i++)rows.push('<div style="display:flex;gap:10px;align-items:center"><input type="radio" name="cf-ok" id="cf-ok'+i+'" value="'+i+'"'+((d.answer||0)===i?' checked':'')+' aria-label="Bonne réponse '+(i+1)+'"><input type="text" id="cf-c'+i+'" placeholder="Choix '+String.fromCharCode(65+i)+'" value="'+esc(ch[i]||'')+'"></div>');
+    rows.push('<p class="small muted">Coche la bonne réponse.</p>');
+  }
+  if(t==='qcm'||t==='vf')rows.push('<label class="f" for="cf-ex">Explication <small>facultatif</small><textarea id="cf-ex" rows="2">'+esc(d.explain||'')+'</textarea></label>');
+  return '<section class="card stack"><h2 class="h2">'+(e.kid?'Modifier la carte':'Nouvelle carte')+'</h2>'+rows.join('')+'<p class="err" id="cf-err" hidden></p><div class="wrap"><button class="btn primary" data-a="savecard">Enregistrer</button><button class="btn ghost" data-a="cancelcard">Annuler</button></div></section>';
+}
+function manualPanel(c){
+  const n=chunkText(c.text).length;
+  return '<section class="card stack" id="manbox"><h2 class="h2">Coller depuis un chat IA</h2><p class="small muted">Gratuit, avec n\'importe quel assistant IA (ChatGPT, Gemini, Mistral…). Choisis tes options, copie la consigne, colle-la dans ton chat IA, puis colle ici sa réponse.</p>'+genOpts()
+   +'<div class="stack"><span class="small" style="font-weight:600">1. Copier la consigne</span><div class="wrap">'+Array.from({length:n},(_,i)=>'<button class="btn sm" data-a="copyprompt" data-p="'+i+'">'+(n>1?'Copier la partie '+(i+1)+' sur '+n:'Copier la consigne')+'</button>').join('')+'</div>'
+   +'<textarea id="man-out" rows="3" readonly hidden aria-label="Consigne à copier"></textarea></div>'
+   +'<label class="f" for="man-in">2. Réponse de l\'IA<textarea id="man-in" rows="5" placeholder="Colle ici la réponse complète de l\'IA (le tableau JSON)…"></textarea></label>'
+   +'<div class="wrap"><button class="btn primary" data-a="mancreate">Créer les cartes</button><button class="btn ghost" data-a="closeman">Fermer</button></div></section>';
+}
+function readCardForm(){
+  const v=id=>{const el=document.getElementById(id);return el?el.value:''};
+  const t=v('cf-type')||'flash',d={type:t,q:v('cf-q').trim()};
+  if(t==='flash'||t==='open')d.a=v('cf-a').trim();
+  if(t==='vf'){d.answer=v('cf-vf')!=='0';d.explain=v('cf-ex').trim()}
+  if(t==='qcm'){d.choices=[0,1,2,3].map(i=>v('cf-c'+i).trim());const r=document.querySelector('input[name="cf-ok"]:checked');d.answer=r?Number(r.value):0;d.explain=v('cf-ex').trim()}
+  return d;
+}
+function viewCourse(){
+  const c=S.docs[V.id];if(!c)return missing();
+  const s=S.docs[c.subjectId]||{},n=counts({kind:'course',id:V.id}),cards=c.cards||[];
+  let h=back('subject','Retour à '+esc(s.name||'la matière')).replace('data-a="subject"','data-a="subject" data-id="'+c.subjectId+'"');
+  h+='<div class="stack"><h1 class="h1">'+esc(c.title)+'</h1><p class="muted">'+plural(n.total,'carte','cartes')+' · '+n.due+' à revoir · '+n.nw+(n.nw>1?' nouvelles':' nouvelle')+'</p></div>';
+  h+='<div class="wrap"><button class="btn primary" data-a="start" data-m="due" data-k="course" data-id="'+V.id+'">Réviser</button><button class="btn" data-a="start" data-m="free" data-k="course" data-id="'+V.id+'">Révision libre</button></div>';
+  if(V.edit)h+=cardEditor();
+  if(V.gen){
+    h+='<section class="card stack" id="genbox"><h2 class="h2">Générer des questions</h2>'+genOpts()+'<div id="gprog" class="stack"><div class="wrap"><button class="btn primary" data-a="rungen">Générer</button><button class="btn ghost" data-a="cancelgen">Annuler</button></div></div></section>';
+  }
+  if(V.man&&c.text)h+=manualPanel(c);
+  if(V.fman&&c.text)h+=ficheManualPanel(c);
+  if(V.fgen)h+='<section class="card stack"><h2 class="h2">Fiche méthode</h2><div id="fprog" class="stack"></div></section>';
+  if(!V.edit&&!V.gen&&!V.man&&!V.fman&&!V.fgen){
+    h+='<div class="wrap">'+(c.text?((hasAI()?'<button class="btn" data-a="opengen">Générer plus de questions</button>':'')+'<button class="btn" data-a="openman">Coller depuis un chat IA</button>'+(hasAI()?'<button class="btn" data-a="genfiche">Créer une fiche méthode</button>':'<button class="btn" data-a="openfman">Créer une fiche méthode</button>')):'')+'<button class="btn" data-a="newcard">Ajouter une carte</button></div>';
+  }
+  h+=courseFiches(V.id);
+  h+='<section class="stack"><div class="between"><h2 class="h2">Cartes</h2><span class="small muted mono" id="cs-n">'+cards.length+'</span></div>';
+  if(cards.length>5)h+='<div class="stack"><input type="text" id="cs-q" placeholder="Rechercher une carte…" aria-label="Rechercher une carte" autocomplete="off"><div class="opts">'+[['all','Toutes'],['due','À revoir'],['new','Nouvelles'],['weak','Difficiles']].map((q,i)=>'<label class="opt"><input type="radio" name="cfl" id="cfl-'+q[0]+'" value="'+q[0]+'"'+(i?'':' checked')+'><span>'+q[1]+'</span></label>').join('')+'</div></div>';
+  h+=cards.length?'<div class="list" id="cs-list">'+cards.map(k=>'<div class="cardrow" data-s="'+esc((k.q+' '+(k.a||'')+' '+(k.choices||[]).join(' ')).toLowerCase())+'" data-st="'+(!k.reps?'new':k.due<=Date.now()?'due':'later')+'" data-w="'+(isWeak(k)?'1':'0')+'"><div class="grow"><div class="wrap" style="margin-bottom:6px"><span class="chip">'+TYPES[k.type]+'</span>'+statusOf(k)+'</div><div class="q">'+rich(k.q)+'</div></div><div class="wrap" style="flex:none;flex-direction:column"><button class="btn sm ghost" data-a="editcard" data-kid="'+k.id+'">Modifier</button><button class="btn sm ghost danger" data-a="delcard" data-kid="'+k.id+'">'+(V.confirm==='k'+k.id?'Confirmer':'Supprimer')+'</button></div></div>').join('')+'</div>':'<p class="muted">Pas encore de cartes. Crée-les avec une IA ou ajoute-les à la main.</p>';
+  h+='</section>';
+  if(c.text)h+='<details class="card"><summary>Texte du cours</summary><div class="txt">'+esc(c.text)+'</div></details>';
+  h+='<section class="card stack"><h2 class="h2">Gérer le cours</h2>'+(V.renameC?'<label class="f" for="rnc">Titre<input type="text" id="rnc" value="'+esc(c.title)+'" maxlength="100"></label><div class="wrap"><button class="btn primary sm" data-a="saverenamec">Enregistrer</button><button class="btn sm ghost" data-a="cancelrenamec">Annuler</button></div>':'<div class="wrap"><button class="btn sm" data-a="renamec">Renommer</button>'+(V.confirm==='delcourse'?'<button class="btn sm danger" data-a="delcourse">Confirmer la suppression</button>':'<button class="btn sm danger" data-a="askdelcourse">Supprimer le cours</button>')+'</div>')+'</section>';
+  return h;
+}
+
+/* ---------- Vue : import ---------- */
+function viewImport(){
+  const subs=subjects(),pre=V.sid||'',mode=V.mode||'qcm',ai=hasAI();
+  const opts=subs.map(s=>'<option value="'+s.id+'"'+(s.id===pre?' selected':'')+'>'+esc(s.name)+'</option>').join('')+'<option value="__new"'+(!subs.length?' selected':'')+'>+ Nouvelle matière</option>';
+  const mo=(v,l)=>'<label class="opt"><input type="radio" name="imo" id="imo-'+v+'" value="'+v+'"'+(mode===v?' checked':'')+'><span>'+l+'</span></label>';
+  return back('home','Accueil')+'<div class="stack"><h1 class="h1">Téléverser un cours</h1><p class="muted">Colle ton cours ou charge un fichier, puis choisis ce que tu veux en faire.</p></div>'
+   +'<form id="imp" class="stack-lg" autocomplete="off" onsubmit="return false">'
+   +'<div class="stack"><label class="f" for="imp-sub">Matière<select id="imp-sub">'+opts+'</select></label>'
+   +'<label class="f" for="imp-new" id="imp-newl"'+(subs.length?' hidden':'')+'>Nom de la matière<input type="text" id="imp-new" maxlength="60"></label>'
+   +'<label class="f" for="imp-title">Titre du cours<input type="text" id="imp-title" maxlength="100"></label></div>'
+   +'<div class="stack"><label class="f" for="imp-text">Contenu du cours<textarea id="imp-text" rows="9" placeholder="Colle ici ton cours, tes notes ou un résumé…"></textarea></label>'
+   +'<div class="between small muted"><span id="imp-count" class="mono">0 / '+MAXTEXT.toLocaleString('fr-FR')+' caractères</span><span>environ 25 pages maximum</span></div>'
+   +'<label class="drop" for="imp-file">Charger un fichier .pdf, .txt ou .md</label><input type="file" id="imp-file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" hidden>'
+   +'<p class="err" id="imp-err" hidden></p></div>'
+   +'<div class="stack"><span class="small" style="font-weight:600">Que veux-tu créer ?</span><div class="opts">'+mo('qcm','QCM et flashcards')+mo('fiche','Fiche méthode')+mo('both','Les deux')+'</div></div>'
+   +'<div id="imp-qopts" class="stack"'+(mode==='fiche'?' hidden':'')+'>'+(ai?genOpts():'')+'</div>'
+   +(ai?'':'<p class="note">Pas de génération automatique ici. Enregistre le cours : tu pourras ensuite copier une consigne dans un chat IA gratuit et coller sa réponse pour créer tes cartes ou ta fiche.</p>')
+   +'<div id="imp-prog" class="stack"><div class="wrap">'+(ai?'<button class="btn primary" data-a="impgo" type="button">Créer maintenant</button>':'')+'<button class="btn'+(ai?'':' primary')+'" data-a="impsave" type="button">'+(ai?'Enregistrer sans générer':'Enregistrer le cours')+'</button></div></div></form>';
+}
+async function submitImport(withGen){
+  const val=id=>document.getElementById(id).value;
+  const err=m=>{const e=$('#imp-err');e.textContent=m;e.hidden=false;e.scrollIntoView({block:'center'})};
+  const text=cleanText(val('imp-text')).slice(0,MAXTEXT);
+  if(text.length<200)return err('Colle un texte plus long (200 caractères minimum) pour que le résultat ait du sens.');
+  const out=(document.querySelector('input[name="imo"]:checked')||{}).value||'qcm';
+  let sid=val('imp-sub');
+  if(sid==='__new'){
+    const name=val('imp-new').trim();if(!name)return err('Donne un nom à la nouvelle matière.');
+    sid='s_'+uid();put(sid,{name,hue:HUES[subjects().length%HUES.length],createdAt:Date.now()});
+  }
+  const title=val('imp-title').trim()||'Cours sans titre';
+  const cid='c_'+uid();
+  put(cid,{subjectId:sid,title,text,createdAt:Date.now(),cards:[]});
+  if(!withGen){toast('Cours enregistré.');go({name:'course',id:cid,man:!hasAI()&&out!=='fiche',fman:!hasAI()&&out==='fiche'});return}
+  const opts=readGen($('#imp')),host=$('#imp-prog');
+  G.stop=false;
+  let n=0,fid=null;
+  if(out!=='fiche')n=await runGeneration(cid,opts,host);
+  if(out!=='qcm'&&!G.stop)fid=await runFiche(cid,host);
+  if(fid&&out==='fiche'){go({name:'fiche',id:fid});toast('Fiche créée.');return}
+  go({name:'course',id:cid});
+  if(fid)toast('Fiche créée : tu la retrouves dans l\'onglet Fiches.');
+  else if(!n&&out!=='qcm')toast('Rien généré. Tu peux réessayer depuis le cours.');
+}
+
+/* ---------- Vue : révision ---------- */
+function curItem(){
+  while(Q.pos<Q.queue.length&&!getCard(Q.queue[Q.pos].cid,Q.queue[Q.pos].kid))Q.pos++;
+  return Q.pos<Q.queue.length?Q.queue[Q.pos]:null;
+}
+function viewQuiz(){
+  const item=curItem();if(!item)return viewDone();
+  const k=getCard(item.cid,item.kid),c=S.docs[item.cid],s=S.docs[c.subjectId]||{};
+  const total=Q.queue.length,sched=Q.mode==='due',rev=Q.stage==='reveal';
+  let h='<div class="qhead"><button class="btn ghost sm" data-a="quit">Quitter</button><div class="qprog" role="progressbar" aria-valuemin="0" aria-valuemax="'+total+'" aria-valuenow="'+Q.pos+'"><i style="width:'+Math.round(Q.pos/total*100)+'%"></i></div><span class="mono small">'+(Q.pos+1)+'/'+total+'</span></div>';
+  h+='<div class="qmeta"><span class="dot" style="--h:'+(s.hue||215)+'"></span><span>'+esc(s.name||'')+' · '+esc(c.title)+'</span><span class="chip">'+TYPES[k.type]+'</span>'+(item.re?'<span class="chip warn">à retenter</span>':'')+'</div>';
+  h+='<div class="qcard'+(Q.anim&&!rev?' rise':'')+'"><div class="qtext">'+rich(k.q)+'</div>';
+  if(k.type==='qcm'){
+    h+='<div class="stack">'+k.choices.map((ch,i)=>{let cl='choice';if(rev){cl+=i===k.answer?' ok':i===Q.picked?' ko':' dim'}
+      return '<button class="'+cl+'" data-a="pick" data-i="'+i+'"'+(rev?' disabled':'')+'><b>'+String.fromCharCode(65+i)+'</b><span>'+rich(ch)+'</span></button>'}).join('')+'</div>';
+  }else if(k.type==='vf'){
+    h+='<div class="rate" style="grid-template-columns:1fr 1fr">'+[[1,'Vrai'],[0,'Faux']].map(p=>{let cl='choice';if(rev){const isAns=(p[0]===1)===k.answer;cl+=isAns?' ok':((p[0]===1)===Q.picked?' ko':' dim')}
+      return '<button class="'+cl+'" style="justify-content:center;font-weight:600" data-a="pick" data-i="'+p[0]+'"'+(rev?' disabled':'')+'>'+p[1]+'</button>'}).join('')+'</div>';
+  }else if(k.type==='open'&&!rev){
+    h+='<label class="f" for="typed">Ta réponse <small>facultatif, écrire aide à mémoriser</small><textarea id="typed" rows="4">'+esc(Q.typed||'')+'</textarea></label>';
+  }
+  if(!rev){
+    if(k.type==='flash'||k.type==='open')h+='<button class="btn primary block" data-a="reveal">'+(k.type==='open'?'Voir la réponse':'Montrer la réponse')+'</button>';
+  }else{
+    if(k.type==='qcm'||k.type==='vf'){
+      const ok=Q.picked===(k.type==='qcm'?k.answer:k.answer);
+      h+='<p class="verdict '+(ok?'ok':'ko')+'" role="status">'+(ok?'Bonne réponse':'Pas tout à fait')+'</p>';
+      if(k.type==='vf')h+='<p class="small muted">La bonne réponse : <strong>'+(k.answer?'Vrai':'Faux')+'</strong>.</p>';
+      if(k.explain)h+='<div class="answer"><span class="lbl">Explication</span><div>'+rich(k.explain)+'</div></div>';
+      h+='<div class="wrap" style="justify-content:flex-end">'+(ok?'<button class="btn" data-a="rate" data-g="3">Trop facile</button>':'')+'<button class="btn primary" data-a="rate" data-g="'+(ok?2:0)+'">Suivant</button></div>';
+    }else{
+      if(k.type==='open'&&Q.typed)h+='<div class="answer"><span class="lbl">Ta réponse</span><div>'+rich(Q.typed)+'</div></div>';
+      h+='<div class="answer"><span class="lbl">'+(k.type==='open'?'Réponse attendue':'Réponse')+'</span><div><span class="mk">'+rich(k.a)+'</span></div></div>';
+      h+='<div class="stack"><span class="small muted">Tu t\'en souvenais ?</span><div class="rate">'+[['À revoir',0],['Difficile',1],['Bien',2],['Facile',3]].map(p=>{
+        const sub=sched?(item.re?(p[1]===0?'Revoir':'1 j'):ivLabel(nextInt(k,p[1]))):'';
+        return '<button class="g'+p[1]+'" data-a="rate" data-g="'+p[1]+'">'+p[0]+'<small>'+sub+'</small></button>'}).join('')+'</div></div>';
+    }
+  }
+  h+='</div>';
+  if(!sched)h+='<p class="small muted">'+(Q.mode==='free'?'Révision libre':'Points faibles')+' : cette série ne modifie pas le planning des cartes.</p>';
+  if(window.matchMedia&&matchMedia('(hover:hover)').matches)h+='<p class="kbd">Espace : révéler ou continuer · 1 à 4 : choisir ou noter</p>';
+  return h;
+}
+function viewDone(){
+  const r=Q.results,n=r.length,ok=r.filter(x=>x.g>=1).length;
+  const missed=r.filter(x=>x.g===0).map(x=>getCard(x.cid,x.kid)).filter(Boolean);
+  let h='<div class="stack"><p class="eyebrow">Série terminée</p><h1 class="h1">'+(n?(ok===n?'Sans faute.':ok/n>=.7?'Bien joué.':'Ça se construit.'):'Rien à revoir.')+'</h1>';
+  if(n){const pc=Math.round(ok/n*100);h+='<div style="display:flex;align-items:center;gap:16px"><svg class="donut" viewBox="0 0 36 36" width="88" height="88" role="img" aria-label="'+pc+' % de réussite"><circle cx="18" cy="18" r="15.9" fill="none" stroke-width="3.4" style="stroke:var(--surface-2)"/><circle cx="18" cy="18" r="15.9" fill="none" stroke-width="3.4" stroke-linecap="round" pathLength="100" stroke-dasharray="'+pc+' 100" transform="rotate(-90 18 18)" style="stroke:var(--accent)"/><text x="18" y="21.5" text-anchor="middle" font-size="9" font-weight="800" style="fill:var(--ink)">'+pc+'%</text></svg><p class="muted"><span class="mono">'+ok+'/'+n+'</span> réussies</p></div>'}
+  h+='</div>';
+  if(missed.length)h+='<section class="stack"><h2 class="h2">À retravailler</h2><div class="list">'+missed.map(k=>'<div class="cardrow"><div class="q">'+rich(k.q)+'</div></div>').join('')+'</div></section>';
+  const more=buildSession(Q.mode,Q.scope).length;
+  h+='<div class="wrap">'+(more&&Q.mode==='due'?'<button class="btn primary" data-a="again">Série suivante ('+more+')</button>':'')+'<button class="btn'+(more&&Q.mode==='due'?'':' primary')+'" data-a="quit">Terminer</button></div>';
+  return h;
+}
+function quizReveal(){
+  const item=curItem();if(!item)return;
+  const k=getCard(item.cid,item.kid);
+  if(k.type==='open'){const t=document.getElementById('typed');Q.typed=t?t.value.trim():''}
+  Q.stage='reveal';Q.anim=false;render();
+}
+function quizPick(i){
+  const item=curItem();if(!item||Q.stage!=='ask')return;
+  const k=getCard(item.cid,item.kid);
+  Q.picked=k.type==='vf'?i===1:i;Q.stage='reveal';Q.anim=false;render();
+}
+function quizRate(g){
+  const item=curItem();if(!item||Q.stage!=='reveal')return;
+  const first=!item.re;
+  applyRating(item,g);
+  if(first)Q.results.push({cid:item.cid,kid:item.kid,g});
+  if(g===0)Q.queue.splice(Math.min(Q.queue.length,Q.pos+5),0,{cid:item.cid,kid:item.kid,re:true});
+  Q.pos++;Q.stage='ask';Q.picked=null;Q.typed='';Q.anim=true;render();window.scrollTo(0,0);
+}
+
+/* ---------- Vue : réglages ---------- */
+function viewSettings(){
+  const st=settings();
+  const cloud=env.mode==='cloud';
+  return back('home','Accueil')+'<h1 class="h1">Réglages</h1>'
+   +'<section class="card stack"><h2 class="h2">Rythme</h2><label class="f" for="npd">Nouvelles cartes par jour<select id="npd" data-i="npd">'+[5,10,15,20,30,50].map(n=>'<option value="'+n+'"'+(n===st.newPerDay?' selected':'')+'>'+n+'</option>').join('')+'</select></label>'
+   +'<p class="small muted">Les cartes à revoir sont toujours proposées. Ce réglage limite seulement les cartes jamais vues, pour ne pas t\'épuiser.</p></section>'
+   +profileSection()+themeSection()+'<section class="card stack"><h2 class="h2">Sauvegarde</h2><p class="small">'+(cloud?'Tes cours et ta progression sont enregistrés sur ton compte et suivent sur tous tes appareils.':env.mode==='pending'||env.mode==='sync'?'Connexion à ton compte en cours…':'Tes données sont enregistrées seulement dans ce navigateur. Exporte-les régulièrement.')+'</p>'
+   +'<div class="wrap"><button class="btn" data-a="export">Exporter en fichier</button><label class="btn" for="bk-file" style="cursor:pointer">Importer un fichier</label><input type="file" id="bk-file" accept=".json,application/json" hidden></div>'
+   +(V.exportText?'<label class="f" for="bk-text">Sauvegarde à copier<textarea id="bk-text" rows="5" readonly>'+esc(V.exportText)+'</textarea></label>':'')+'</section>'
+   +aiSection()+shareSection()
+   +'<section class="card stack"><h2 class="h2">Zone sensible</h2><div class="wrap">'+(V.confirm==='wipe'?'<button class="btn danger" data-a="wipe">Confirmer : tout effacer</button>':'<button class="btn danger" data-a="askwipe">Effacer toutes mes données</button>')+'</div></section>';
+}
+function shareSection(){
+  const t=IN_APP?"Chacun a ses propres cours et sa propre progression, rien n'est mélangé. Pour que ça s'enregistre sur leur compte, invite-les en tant que contributeurs depuis le menu de partage de la page. Générer des questions utilise le quota de la personne qui clique."
+    :"Envoie simplement l'adresse du site à tes amis. Chacun a ses propres cours et sa propre progression, enregistrés dans son navigateur : pense à exporter ta sauvegarde de temps en temps, surtout avant de changer d'appareil.";
+  return '<section class="card stack"><h2 class="h2">Partager avec des amis</h2><p class="small muted">'+t+'</p></section>';
+}
+function aiSection(){
+  if(env.sample)return '';
+  const ai=getAI();
+  return '<section class="card stack"><h2 class="h2">Génération automatique <span class="chip">facultatif</span></h2><p class="small muted">Sans clé, utilise « Coller depuis un chat IA » dans un cours. Avec une clé Gemini gratuite, Mnémo génère les cartes tout seul. Crée-la sur <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Elle reste dans ton navigateur et n\'est pas incluse dans les sauvegardes.</p>'
+   +'<label class="f" for="gk">Clé API Gemini<input type="password" id="gk" data-i="gk" autocomplete="off" value="'+esc(ai.key||'')+'"></label>'
+   +'<label class="f" for="gm">Modèle<input type="text" id="gm" data-i="gm" value="'+esc(ai.model||'gemini-2.5-flash')+'"></label></section>';
+}
+async function doExport(){
+  const data=JSON.stringify({app:'mnemo',v:1,exportedAt:Date.now(),docs:S.docs});
+  const name='mnemo-sauvegarde-'+dk(Date.now())+'.json';
+  const mark=()=>{settings().lastExport=Date.now();touch('settings')};
+  if(env.downloads){
+    try{await env.downloads.save({filename:name,data});mark();toast('Sauvegarde exportée.');if(V.name==='home')render();return}
+    catch(e){if(e&&e.code==='declined')return}
+  }else{
+    try{
+      const u=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');
+      a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);
+      mark();toast('Sauvegarde téléchargée.');if(V.name==='home')render();return;
+    }catch(e){}
+  }
+  mark();go({name:'settings',exportText:data});toast('Copie le texte ci-dessous et garde-le dans un fichier.');
+}
+function importBackup(text){
+  let o;try{o=JSON.parse(text)}catch(e){toast("Ce fichier n'est pas une sauvegarde Mnémo valide.");return}
+  const docs=o&&o.docs&&typeof o.docs==='object'?o.docs:null;
+  if(!docs){toast("Ce fichier n'est pas une sauvegarde Mnémo valide.");return}
+  let n=0;
+  for(const id of Object.keys(docs)){
+    if(!/^(s_|c_|f_)[\w-]+$/.test(id)&&id!=='settings'&&id!=='profile')continue;
+    const d=docs[id];if(!d||typeof d!=='object')continue;
+    put(id,d);n++;
+  }
+  toast(n?n+' éléments importés.':'Rien à importer dans ce fichier.');render();
+}
+
+/* ---------- Profil ---------- */
+const ageOf=b=>{const t=new Date(),d=new Date(b);let a=t.getFullYear()-d.getFullYear();if(t.getMonth()<d.getMonth()||(t.getMonth()===d.getMonth()&&t.getDate()<d.getDate()))a--;return a};
+function profileFields(px,p){
+  p=p||{};
+  const g=(v,l)=>'<label class="opt"><input type="radio" name="'+px+'-g" id="'+px+'-g-'+v+'" value="'+v+'"'+(p.gender===v?' checked':'')+'><span>'+l+'</span></label>';
+  return '<label class="f" for="'+px+'-name">Prénom<input type="text" id="'+px+'-name" autocomplete="given-name" maxlength="40" value="'+esc(p.firstName||'')+'"></label>'
+   +'<div class="stack"><span class="small" style="font-weight:600" id="'+px+'-gl">Tu es</span><div class="opts" role="radiogroup" aria-labelledby="'+px+'-gl">'+g('h','Un homme')+g('f','Une femme')+g('n','Je préfère ne pas le dire')+'</div></div>'
+   +'<label class="f" for="'+px+'-birth">Date de naissance<input type="date" id="'+px+'-birth" autocomplete="bday" min="1900-01-01" max="'+dk(Date.now())+'" value="'+esc(p.birth||'')+'"></label>';
+}
+function readProfile(px){
+  const v=id=>(document.getElementById(px+'-'+id)||{}).value||'';
+  const name=v('name').trim(),g=(document.querySelector('input[name="'+px+'-g"]:checked')||{}).value||'',b=v('birth');
+  let err='';
+  if(!name)err='Indique ton prénom.';
+  else if(!g)err='Choisis une réponse pour « Tu es ».';
+  else if(!/^\d{4}-\d{2}-\d{2}$/.test(b))err='Indique ta date de naissance.';
+  else{const a=ageOf(b);if(!(a>=5&&a<=110))err='Vérifie ta date de naissance.'}
+  return{name,g,b,err};
+}
+function viewSignup(){
+  return '<div class="stack-lg" style="max-width:480px;margin:0 auto;width:100%;padding-top:8px">'
+   +'<div class="stack"><p class="eyebrow">Bienvenue</p><h1 class="h1">Crée ton profil Mnémo</h1><p class="muted">Dis-nous qui tu es, ça prend dix secondes. Ensuite tu pourras téléverser tes cours.</p></div>'
+   +'<form id="su" class="stack-lg" onsubmit="return false">'+profileFields('su')
+   +'<p class="err" id="su-err" role="alert" hidden></p><button class="btn primary block" data-a="signup" type="button">Créer mon profil</button>'
+   +'<p class="small muted">Ces informations servent seulement à personnaliser ton espace. Elles ne sont pas partagées.</p></form></div>';
+}
+function profileSection(){
+  const p=S.docs.profile||{};
+  return '<section class="card stack"><h2 class="h2">Mon profil</h2>'+profileFields('pf',p)+'<p class="err" id="pf-err" role="alert" hidden></p><div class="wrap"><button class="btn primary sm" data-a="saveprofile">Enregistrer</button></div></section>';
+}
+
+/* ---------- Calendrier ---------- */
+const pad=n=>String(n).padStart(2,'0');
+const fmtDay=t=>new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
+const fmtKey=k=>{const a=k.split('-').map(Number);return new Date(a[0],a[1]-1,a[2]).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})};
+function viewCalendar(){
+  const nowD=new Date();
+  if(V.cy==null){V.cy=nowD.getFullYear();V.cm=nowD.getMonth()}
+  const y=V.cy,m=V.cm,nd=new Date(y,m+1,0).getDate(),off=(new Date(y,m,1).getDay()+6)%7;
+  const st=settings(),todayK=dk(Date.now()),fi={},co={},due={};
+  Object.keys(S.docs).forEach(id=>{
+    const d=S.docs[id];
+    if(id.startsWith('f_')){const k=dk(d.createdAt);(fi[k]=fi[k]||[]).push(id)}
+    else if(id.startsWith('c_')){const k=dk(d.createdAt);(co[k]=co[k]||[]).push(id);
+      for(const c of (d.cards||[])){if(!c.reps)continue;const key=c.due<=Date.now()?todayK:dk(c.due);const o=due[key]=due[key]||{};o[id]=(o[id]||0)+1}}
+  });
+  const sel=V.csel||todayK;
+  let monthDays=0;
+  let cells='';
+  ['L','M','M','J','V','S','D'].forEach(x=>{cells+='<span class="dow" aria-hidden="true">'+x+'</span>'});
+  for(let i=0;i<off;i++)cells+='<span class="day blank" aria-hidden="true"></span>';
+  for(let d=1;d<=nd;d++){
+    const key=y+'-'+pad(m+1)+'-'+pad(d),rv=(st.days[key]||{}).n||0,fc=(fi[key]||[]).length,du=due[key]?Object.keys(due[key]).length:0;
+    if(rv)monthDays++;
+    const lv=rv>=25?' l3':rv>=10?' l2':rv?' l1':'';
+    cells+='<button class="day'+lv+(key===todayK?' today':'')+'" data-a="calsel" data-d="'+key+'" aria-pressed="'+(key===sel?'true':'false')+'" aria-label="'+esc(fmtKey(key))+'"><span>'+d+'</span><span class="ind">'+(rv?'<i class="r"></i>':'')+(fc?'<i class="f"></i>':'')+(du?'<i class="u"></i>':'')+'</span></button>';
+  }
+  const title=new Date(y,m,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  let h='<div class="stack"><h1 class="h1">Calendrier</h1><p class="muted">Série en cours : <span class="mono">'+streak()+'</span> j · ce mois-ci : <span class="mono">'+monthDays+'</span> jour'+(monthDays>1?'s':'')+' de révision</p></div>';
+  h+='<section class="stack"><div class="between"><button class="btn sm" data-a="calprev" aria-label="Mois précédent">←</button><h2 class="h2 cap">'+esc(title)+'</h2><button class="btn sm" data-a="calnext" aria-label="Mois suivant">→</button></div>'
+   +'<div class="cal">'+cells+'</div>'
+   +'<div class="legend"><span><i style="background:var(--accent)"></i>Cartes révisées</span><span><i style="background:var(--warn);border-radius:2px"></i>Fiche créée</span><span><i style="border:1.5px solid var(--ink-2)"></i>À revoir</span></div>'
+   +'<div class="wrap"><button class="btn sm ghost" data-a="caltoday">Aujourd\'hui</button></div></section>';
+  // détail du jour
+  const sd=st.days[sel]||{};
+  let det='',empty=true;
+  const crow=(cid,txt)=>S.docs[cid]?'<button class="item" data-a="course" data-id="'+cid+'"><span class="grow"><span class="t">'+esc(S.docs[cid].title)+'</span><span class="muted small" style="display:block">'+esc((S.docs[S.docs[cid].subjectId]||{}).name||'')+(txt?' · '+txt:'')+'</span></span><span class="muted">›</span></button>':'';
+  if(sd.n){
+    empty=false;
+    det+='<div class="stack"><span class="eyebrow">Révisions</span><p class="small muted">'+plural(sd.n,'carte révisée','cartes révisées')+' · '+Math.round(sd.ok/sd.n*100)+' % de réussite</p>';
+    const rows=Object.keys(sd.cs||{}).map(cid=>crow(cid,plural(sd.cs[cid],'carte','cartes'))).join('');
+    if(rows)det+='<div class="list">'+rows+'</div>';
+    det+='</div>';
+  }
+  if(fi[sel]){
+    empty=false;
+    det+='<div class="stack"><span class="eyebrow">Fiches méthode créées</span><div class="list">'+fi[sel].map(id=>'<button class="item" data-a="openfiche" data-id="'+id+'"><span class="grow"><span class="t">'+esc(S.docs[id].title)+'</span><span class="muted small" style="display:block">'+esc((S.docs[S.docs[id].subjectId]||{}).name||'')+'</span></span><span class="muted">›</span></button>').join('')+'</div></div>';
+  }
+  if(co[sel]){
+    empty=false;
+    det+='<div class="stack"><span class="eyebrow">Cours ajoutés</span><div class="list">'+co[sel].map(cid=>crow(cid,'')).join('')+'</div></div>';
+  }
+  if(due[sel]){
+    empty=false;
+    det+='<div class="stack"><span class="eyebrow">'+(sel<=todayK?'À revoir':'Prévu')+'</span><div class="list">'+Object.keys(due[sel]).map(cid=>crow(cid,plural(due[sel][cid],'carte','cartes'))).join('')+'</div>'
+      +(sel===todayK?'<div class="wrap"><button class="btn primary sm" data-a="start" data-m="due" data-k="all">Réviser maintenant</button></div>':'')+'</div>';
+  }
+  if(empty)det='<p class="muted">Rien ce jour-là.</p>';
+  h+='<section class="card stack"><h2 class="h2 cap">'+esc(fmtKey(sel))+'</h2>'+det+'</section>';
+  return h;
+}
+
+/* ---------- Fiches méthode ---------- */
+function normFiche(x){
+  if(x&&!Array.isArray(x)&&typeof x==='object'&&x.fiche&&typeof x.fiche==='object')x=x.fiche;
+  if(!x||typeof x!=='object'||Array.isArray(x))return null;
+  const str=(v,n)=>typeof v==='string'?v.trim().slice(0,n||600):'';
+  const arr=(v,n,m)=>Array.isArray(v)?v.map(i=>str(i,n)).filter(Boolean).slice(0,m):[];
+  const A=v=>Array.isArray(v)?v:[];
+  const f={
+    title:str(x.title,120),summary:str(x.summary,1500),
+    sections:A(x.sections).map(q=>({heading:str(q&&q.heading,120),points:arr(q&&q.points,400,10)})).filter(q=>q.heading&&q.points.length).slice(0,10),
+    definitions:A(x.definitions).map(q=>({term:str(q&&q.term,100),def:str(q&&q.def,400)})).filter(q=>q.term&&q.def).slice(0,20),
+    facts:A(x.key_facts||x.facts).map(q=>({label:str(q&&q.label,100),value:str(q&&q.value,300)})).filter(q=>q.label&&q.value).slice(0,15),
+    method:arr(x.method,400,10),pitfalls:arr(x.pitfalls,400,8),selftest:arr(x.selftest,300,8)
+  };
+  if(!f.summary&&!f.sections.length)return null;
+  return f;
+}
+function buildFichePrompt(course,subject,text){
+  return "Tu es un professeur expert en méthodes de travail. À partir du cours ci-dessous, rédige une fiche méthode de révision claire, utile et facile à mémoriser, dans la langue du cours.\n"
+   +"Matière : "+subject+"\nTitre du cours : "+course+"\n\n"
+   +"Réponds uniquement par un objet JSON, sans texte autour, avec exactement cette structure :\n"
+   +'{"title":"titre de la fiche","summary":"résumé en 3 à 5 phrases","sections":[{"heading":"partie du cours","points":["idée essentielle en une phrase"]}],"definitions":[{"term":"notion","def":"définition courte"}],"key_facts":[{"label":"formule, date ou chiffre à connaître","value":"énoncé ou valeur"}],"method":["étape concrète pour appliquer le cours ou résoudre un exercice type"],"pitfalls":["erreur fréquente à éviter"],"selftest":["question pour vérifier qu\'on a compris"]}\n'
+   +"Règles : 4 à 8 sections au maximum, des points courts et mémorisables, uniquement des informations présentes dans le cours, method = démarche en 4 à 7 étapes, laisse un tableau vide si une rubrique ne s'applique pas.\n"
+   +'\nTexte du cours :\n\u0022\u0022\u0022\n'+text+'\n\u0022\u0022\u0022';
+}
+function addFiche(cid,f){
+  const c=S.docs[cid],id='f_'+uid();
+  put(id,{courseId:cid,subjectId:c.subjectId,title:f.title||('Fiche : '+c.title),createdAt:Date.now(),data:f});
+  return id;
+}
+async function runFiche(cid,host){
+  const c=S.docs[cid];if(!c||!c.text)return null;
+  const sub=(S.docs[c.subjectId]||{}).name||'';
+  G.ctl=new AbortController();G.busy=true;
+  try{
+    host.innerHTML='<p><span class="spin"></span>L\'IA prépare ta fiche méthode… compte environ une minute.</p><button class="btn sm" data-a="stopgen" type="button">Arrêter</button>';
+    const out=await callAI(buildFichePrompt(c.title,sub,c.text),G.ctl.signal);
+    const f=normFiche(out);if(!f)throw{code:'invalid_json'};
+    return addFiche(cid,f);
+  }catch(e){
+    if(!(e&&e.code==='cancelled'))toast(ERR[e&&e.code]||ERR.upstream_error);
+    return null;
+  }finally{G.busy=false;G.ctl=null}
+}
+function ficheManualPanel(c){
+  return '<section class="card stack" id="fmbox"><h2 class="h2">Fiche méthode via un chat IA</h2><p class="small muted">Gratuit, avec n\'importe quel assistant IA. Copie la consigne, colle-la dans ton chat, puis colle ici sa réponse.</p>'
+   +'<div class="stack"><span class="small" style="font-weight:600">1. Copier la consigne</span><div class="wrap"><button class="btn sm" data-a="copyfiche">Copier la consigne</button></div><textarea id="fm-out" rows="3" readonly hidden aria-label="Consigne à copier"></textarea></div>'
+   +'<label class="f" for="fm-in">2. Réponse de l\'IA<textarea id="fm-in" rows="5" placeholder="Colle ici la réponse complète de l\'IA…"></textarea></label>'
+   +'<div class="wrap"><button class="btn primary" data-a="createfiche">Créer la fiche</button><button class="btn ghost" data-a="closefman">Fermer</button></div></section>';
+}
+function courseFiches(cid){
+  const L=Object.keys(S.docs).filter(k=>k.startsWith('f_')&&S.docs[k].courseId===cid).sort((a,b)=>S.docs[b].createdAt-S.docs[a].createdAt);
+  if(!L.length)return'';
+  return '<section class="stack"><h2 class="h2">Fiches méthode</h2><div class="list">'+L.map(id=>'<button class="item" data-a="openfiche" data-id="'+id+'"><span class="grow"><span class="t">'+esc(S.docs[id].title)+'</span><span class="muted small" style="display:block">créée le '+fmtDay(S.docs[id].createdAt)+'</span></span><span class="muted">›</span></button>').join('')+'</div></section>';
+}
+function viewFiches(){
+  const L=Object.keys(S.docs).filter(k=>k.startsWith('f_')).sort((a,b)=>S.docs[b].createdAt-S.docs[a].createdAt);
+  let h='<div class="between"><h1 class="h1">Mes fiches</h1><button class="btn primary sm" data-a="import" data-m="fiche">+ Nouvelle</button></div>';
+  if(!L.length)return h+'<div class="card stack"><p class="muted">Tu n\'as pas encore de fiche méthode. Téléverse un cours et Mnémo en tire une fiche claire : résumé, notions clés, méthode et pièges à éviter.</p><div class="wrap"><button class="btn primary" data-a="import" data-m="fiche">Créer ma première fiche</button></div></div>';
+  return h+'<div class="list">'+L.map(id=>{const d=S.docs[id],c=S.docs[d.courseId];
+    return '<button class="item" data-a="openfiche" data-id="'+id+'"><span class="dot" style="--h:'+((S.docs[d.subjectId]||{}).hue||215)+'"></span><span class="grow"><span class="t">'+esc(d.title)+'</span><span class="muted small" style="display:block">'+esc((S.docs[d.subjectId]||{}).name||'')+(c?' · '+esc(c.title):'')+' · '+fmtDay(d.createdAt)+'</span></span><span class="muted">›</span></button>'}).join('')+'</div>';
+}
+function ficheText(d){
+  const f=d.data||{},L=[d.title,''];
+  if(f.summary)L.push('L\'ESSENTIEL',f.summary,'');
+  (f.sections||[]).forEach(q=>{L.push(q.heading.toUpperCase());q.points.forEach(x=>L.push('- '+x));L.push('')});
+  if((f.definitions||[]).length){L.push('DÉFINITIONS');f.definitions.forEach(q=>L.push(q.term+' : '+q.def));L.push('')}
+  if((f.facts||[]).length){L.push('À CONNAÎTRE PAR CŒUR');f.facts.forEach(q=>L.push(q.label+' : '+q.value));L.push('')}
+  if((f.method||[]).length){L.push('MÉTHODE');f.method.forEach((x,i)=>L.push((i+1)+'. '+x));L.push('')}
+  if((f.pitfalls||[]).length){L.push('PIÈGES À ÉVITER');f.pitfalls.forEach(x=>L.push('- '+x));L.push('')}
+  if((f.selftest||[]).length){L.push('POUR TE TESTER');f.selftest.forEach(x=>L.push('- '+x))}
+  return L.join('\n').trim();
+}
+function viewFiche(){
+  const d=S.docs[V.id];if(!d)return missing();
+  const f=d.data||{},c=S.docs[d.courseId],s=S.docs[d.subjectId]||{};
+  const ul=(a,cl)=>'<ul'+(cl?' class="'+cl+'"':'')+'>'+a.map(x=>'<li>'+rich(x)+'</li>').join('')+'</ul>';
+  let h=back('fiches','Mes fiches')+'<div class="stack"><p class="eyebrow">Fiche méthode</p><h1 class="h1">'+esc(d.title)+'</h1><div class="wrap">'+(s.name?'<span class="chip">'+esc(s.name)+'</span>':'')+(c?'<span class="chip">'+esc(c.title)+'</span>':'')+'<span class="chip">créée le '+fmtDay(d.createdAt)+'</span></div></div>';
+  h+='<div class="wrap noprint"><button class="btn" data-a="copyficheview">Copier le texte</button>'+(IN_APP?'':'<button class="btn" data-a="printfiche">Imprimer / PDF</button>')
+   +(c&&(c.cards||[]).length?'<button class="btn" data-a="start" data-m="free" data-k="course" data-id="'+d.courseId+'">S\'entraîner sur ce cours</button>':'')
+   +(c?'<button class="btn ghost" data-a="course" data-id="'+d.courseId+'">Voir le cours</button>':'')+'</div>';
+  h+='<article class="stack-lg fiche">';
+  if(f.summary)h+='<section class="card stack"><h2 class="h2">L\'essentiel</h2><p>'+rich(f.summary)+'</p></section>';
+  (f.sections||[]).forEach(q=>{h+='<section class="card stack"><h2 class="h2">'+esc(q.heading)+'</h2>'+ul(q.points)+'</section>'});
+  if((f.definitions||[]).length)h+='<section class="card stack"><h2 class="h2">Notions clés</h2><dl class="defs">'+f.definitions.map(q=>'<div><dt>'+esc(q.term)+'</dt><dd>'+rich(q.def)+'</dd></div>').join('')+'</dl></section>';
+  if((f.facts||[]).length)h+='<section class="card stack"><h2 class="h2">À connaître par cœur</h2><div class="facts">'+f.facts.map(q=>'<div><b>'+esc(q.label)+'</b><span>'+rich(q.value)+'</span></div>').join('')+'</div></section>';
+  if((f.method||[]).length)h+='<section class="card stack"><h2 class="h2">Méthode pas à pas</h2><ol>'+f.method.map(x=>'<li>'+rich(x)+'</li>').join('')+'</ol></section>';
+  if((f.pitfalls||[]).length)h+='<section class="card stack"><h2 class="h2">Pièges à éviter</h2>'+ul(f.pitfalls,'pit')+'</section>';
+  if((f.selftest||[]).length)h+='<section class="card stack"><h2 class="h2">Pour te tester</h2>'+ul(f.selftest)+'</section>';
+  const plan=[[0,'Relis la fiche une fois, à voix haute.'],[1,'Rappelle-toi les points sans regarder, puis vérifie.'],[3,'Refais les questions du cours.'],[7,'Reprends la méthode sur un exercice.'],[14,'Test final sans la fiche.'],[30,'Dernier rappel pour fixer à long terme.']];
+  h+='<section class="card stack noprint"><h2 class="h2">Plan de révision conseillé</h2><ol>'+plan.map(q=>'<li><b style="text-transform:capitalize">'+esc(new Date(sod(d.createdAt)+q[0]*DAY).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}))+'</b> · '+q[1]+'</li>').join('')+'</ol></section>';
+  h+='</article><section class="card stack noprint"><h2 class="h2">Gérer la fiche</h2><div class="wrap">'+(V.confirm==='delfiche'?'<button class="btn sm danger" data-a="delfiche">Confirmer la suppression</button>':'<button class="btn sm danger" data-a="askdelfiche">Supprimer la fiche</button>')+'</div></section>';
+  return h;
+}
+
+/* ---------- Événements ---------- */
+$app.addEventListener('click',async e=>{
+  const el=e.target.closest('[data-a]');if(!el)return;
+  const a=el.dataset.a,id=el.dataset.id;
+  if(G.busy&&['home','settings','fiches','calendar','subject','course','import','start','openfiche'].includes(a))return;
+  switch(a){
+    case 'home':if(G.busy)return;go({name:'home'});break;
+    case 'settings':if(G.busy)return;go({name:'settings'});break;
+    case 'subject':go({name:'subject',id});break;
+    case 'course':go({name:'course',id});break;
+    case 'import':go({name:'import',sid:id||'',mode:el.dataset.m||'qcm'});break;
+    case 'fiches':go({name:'fiches'});break;
+    case 'calendar':go({name:'calendar'});break;
+    case 'openfiche':go({name:'fiche',id});break;
+    case 'calsel':V.csel=el.dataset.d;render();break;
+    case 'calprev':{const d=new Date(V.cy,V.cm-1,1);V.cy=d.getFullYear();V.cm=d.getMonth();render();break}
+    case 'calnext':{const d=new Date(V.cy,V.cm+1,1);V.cy=d.getFullYear();V.cm=d.getMonth();render();break}
+    case 'caltoday':V.cy=null;V.csel=null;render();break;
+    case 'signup':{
+      const r=readProfile('su'),er=$('#su-err');
+      if(r.err){er.textContent=r.err;er.hidden=false;break}
+      put('profile',{firstName:r.name,gender:r.g,birth:r.b,createdAt:Date.now()});
+      go({name:'home'});toast('Bienvenue, '+r.name+' !');break}
+    case 'saveprofile':{
+      const r=readProfile('pf'),er=$('#pf-err');
+      if(r.err){er.textContent=r.err;er.hidden=false;break}
+      const pr=S.docs.profile;pr.firstName=r.name;pr.gender=r.g;pr.birth=r.b;touch('profile');
+      er.hidden=true;toast('Profil enregistré.');break}
+    case 'genfiche':{
+      V.fgen=true;render();
+      const fid=await runFiche(V.id,$('#fprog'));
+      V.fgen=false;
+      if(fid){go({name:'fiche',id:fid});toast('Fiche créée.')}else render();
+      break}
+    case 'openfman':V.fman=true;render();break;
+    case 'closefman':V.fman=false;render();break;
+    case 'copyfiche':{
+      const c=S.docs[V.id],p=buildFichePrompt(c.title,(S.docs[c.subjectId]||{}).name||'',c.text);
+      const out=$('#fm-out');out.value=p;out.hidden=false;
+      try{await navigator.clipboard.writeText(p);toast('Consigne copiée. Colle-la dans ton chat IA.')}
+      catch(x){out.focus();out.select();toast('Copie le texte affiché (Ctrl+C ou appui long).')}
+      break}
+    case 'createfiche':{
+      const f=normFiche(parseLoose($('#fm-in').value));
+      if(!f)return toast("Je n'ai pas trouvé de fiche dans ce texte. Colle toute la réponse de l'IA.");
+      const fid=addFiche(V.id,f);V.fman=false;go({name:'fiche',id:fid});toast('Fiche créée.');break}
+    case 'copyficheview':{
+      try{await navigator.clipboard.writeText(ficheText(S.docs[V.id]));toast('Fiche copiée.')}catch(x){toast('Copie impossible ici.')}
+      break}
+    case 'printfiche':window.print();break;
+    case 'askdelfiche':V.confirm='delfiche';render();break;
+    case 'delfiche':del(V.id);V.confirm=null;toast('Fiche supprimée.');go({name:'fiches'});break;
+    case 'start':startQuiz(el.dataset.m,el.dataset.k==='all'?{kind:'all'}:{kind:el.dataset.k,id});break;
+    case 'again':startQuiz(Q.mode,Q.scope);break;
+    case 'quit':{const b=Q&&Q.back?Q.back:{name:'home'};go(b.name==='quiz'?{name:'home'}:b);break}
+    case 'reveal':quizReveal();break;
+    case 'pick':quizPick(Number(el.dataset.i));break;
+    case 'rate':quizRate(Number(el.dataset.g));break;
+    case 'impgo':submitImport(true);break;
+    case 'impsave':submitImport(false);break;
+    case 'stopgen':G.stop=true;if(G.ctl)G.ctl.abort();break;
+    case 'opengen':V.gen=true;render();break;
+    case 'cancelgen':V.gen=false;render();break;
+    case 'rungen':{
+      const opts=readGen($('#genbox'));V.gen=true;
+      const n=await runGeneration(V.id,opts,$('#gprog'));
+      V.gen=false;if(V.name==='course')render();
+      if(!n)toast('Aucune nouvelle carte.');break}
+    case 'openman':V.man=true;render();break;
+    case 'closeman':V.man=false;render();break;
+    case 'copyprompt':{
+      const c=S.docs[V.id],chunks=chunkText(c.text),i=Number(el.dataset.p),o=readGen($('#manbox'));
+      const per=clamp(Math.ceil(o.count/chunks.length),3,20);
+      const p=buildPrompt(c.title,(S.docs[c.subjectId]||{}).name||'',chunks[i],per,o.types,o.extra.trim(),(c.cards||[]).slice(-60).map(k=>k.q.slice(0,90)),i+1,chunks.length);
+      const out=$('#man-out');out.value=p;out.hidden=false;
+      try{await navigator.clipboard.writeText(p);toast('Consigne copiée. Colle-la dans ton chat IA.')}
+      catch(x){out.focus();out.select();toast('Copie le texte affiché (Ctrl+C ou appui long).')}
+      break}
+    case 'mancreate':{
+      let arr=parseLoose($('#man-in').value);
+      if(arr&&!Array.isArray(arr)&&Array.isArray(arr.cards))arr=arr.cards;
+      if(!Array.isArray(arr))return toast("Je n'ai pas trouvé de tableau JSON dans ce texte. Colle toute la réponse de l'IA.");
+      const r=addCards(V.id,arr.map(normCard).filter(Boolean));
+      if(!r.added)return toast('Aucune carte valide trouvée dans cette réponse.');
+      toast(plural(r.added,'carte ajoutée','cartes ajoutées')+(r.full?' (limite atteinte).':'.'));V.man=false;render();break}
+    case 'newcard':V.edit={draft:{type:'flash'}};render();break;
+    case 'editcard':{const k=getCard(V.id,el.dataset.kid);if(k){V.edit={kid:k.id,cid2:1,draft:JSON.parse(JSON.stringify(k))};render()}break}
+    case 'cancelcard':V.edit=null;render();break;
+    case 'savecard':{
+      const d=readCardForm(),er=$('#cf-err');const bad=m=>{er.textContent=m;er.hidden=false};
+      if(!d.q)return bad('Écris la question.');
+      if((d.type==='flash'||d.type==='open')&&!d.a)return bad('Écris la réponse.');
+      if(d.type==='qcm'){const f=d.choices.filter(Boolean);if(f.length<2||!d.choices[d.answer])return bad('Remplis au moins deux choix et coche la bonne réponse.');
+        const idx=d.choices.map((c,i)=>i).filter(i=>d.choices[i]);d.answer=idx.indexOf(d.answer);d.choices=f}
+      const c=S.docs[V.id];
+      if(V.edit.kid){const k=c.cards.find(x=>x.id===V.edit.kid);Object.keys(d).forEach(x=>k[x]=d[x])}
+      else{
+        if(c.cards.length>=MAXCARDS)return bad('Limite de '+MAXCARDS+' cartes atteinte pour ce cours.');
+        c.cards.push(Object.assign({id:uid()+Math.random().toString(36).slice(2,5),ease:2.5,interval:0,reps:0,lapses:0,due:0,lastOk:null},d));
+      }
+      touch(V.id);V.edit=null;render();toast('Carte enregistrée.');break}
+    case 'delcard':{
+      const kid=el.dataset.kid;
+      if(V.confirm==='k'+kid){const c=S.docs[V.id];c.cards=c.cards.filter(x=>x.id!==kid);touch(V.id);V.confirm=null;render()}
+      else{V.confirm='k'+kid;render()}break}
+    case 'askdelcourse':V.confirm='delcourse';render();break;
+    case 'delcourse':{const sid=S.docs[V.id].subjectId;del(V.id);V.confirm=null;toast('Cours supprimé.');go({name:'subject',id:sid});break}
+    case 'rename':V.rename=true;render();break;
+    case 'saverename':{const n=document.getElementById('rn').value.trim();if(n){S.docs[V.id].name=n;touch(V.id)}V.rename=false;render();break}
+    case 'askdelsub':V.confirm='delsub';render();break;
+    case 'delsub':{coursesOf(V.id).forEach(c=>del(c.id));Object.keys(S.docs).filter(k=>k.startsWith('f_')&&S.docs[k].subjectId===V.id).forEach(del);del(V.id);V.confirm=null;toast('Matière supprimée.');go({name:'home'});break}
+    case 'snooze':settings().remindAt=Date.now()+7*DAY;touch('settings');render();break;
+    case 'renamec':V.renameC=true;render();break;
+    case 'cancelrenamec':V.renameC=false;render();break;
+    case 'saverenamec':{const n=document.getElementById('rnc').value.trim();if(n){S.docs[V.id].title=n;touch(V.id)}V.renameC=false;render();break}
+    case 'export':doExport();break;
+    case 'askwipe':V.confirm='wipe';render();break;
+    case 'wipe':{Object.keys(S.docs).forEach(del);V.confirm=null;toast('Données effacées.');go({name:'home'});break}
+  }
+});
+$app.addEventListener('change',async e=>{
+  const t=e.target;
+  if(t.id==='imp-sub'){const nl=document.getElementById('imp-newl');nl.hidden=t.value!=='__new'}
+  else if(t.name==='imo'){const q=document.getElementById('imp-qopts');if(q)q.hidden=t.value==='fiche'}
+  else if(t.id==='imp-file'&&t.files&&t.files[0]){
+    const f=t.files[0],er=$('#imp-err');er.hidden=true;
+    try{
+      let txt;
+      if(/\.pdf$/i.test(f.name)||f.type==='application/pdf'){er.textContent='Lecture du PDF…';er.hidden=false;er.style.color='var(--ink-2)';txt=await pdfToText(f);er.hidden=true;er.style.color=''}
+      else txt=await f.text();
+      txt=cleanText(txt);
+      if(txt.length<50)throw new Error('vide');
+      const ta=document.getElementById('imp-text');ta.value=(ta.value?ta.value+'\n\n':'')+txt;
+      ta.dispatchEvent(new Event('input',{bubbles:true}));
+      const ti=document.getElementById('imp-title');if(!ti.value)ti.value=f.name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ');
+    }catch(x){er.style.color='';er.textContent="Impossible de lire ce fichier (un PDF scanné n'a pas de texte). Colle plutôt le texte du cours.";er.hidden=false}
+    t.value='';
+  }
+  else if(t.dataset&&t.dataset.i==='cftype'){V.edit.draft=readCardForm();V.edit.draft.type=t.value;render()}
+  else if(t.name==='cfl'){applyCardFilter()}
+  else if(t.dataset&&t.dataset.i==='thm'){try{localStorage.setItem('mnemo.theme',t.value)}catch(x){}applyTheme()}
+  else if(t.dataset&&t.dataset.i==='gk'){setAI(Object.assign({},getAI(),{key:t.value.trim()}));toast('Clé enregistrée sur cet appareil.')}
+  else if(t.dataset&&t.dataset.i==='gm'){setAI(Object.assign({},getAI(),{model:t.value.trim()||'gemini-2.5-flash'}));toast('Modèle enregistré.')}
+  else if(t.dataset&&t.dataset.i==='npd'){settings().newPerDay=Number(t.value);touch('settings');toast('Enregistré.')}
+  else if(t.id==='bk-file'&&t.files&&t.files[0]){const f=t.files[0];importBackup(await f.text());t.value=''}
+});
+$app.addEventListener('input',e=>{
+  if(e.target.id==='cs-q'){applyCardFilter();return}
+  if(e.target.id==='imp-text'){const n=e.target.value.length,c=document.getElementById('imp-count');
+    c.textContent=n.toLocaleString('fr-FR')+' / '+MAXTEXT.toLocaleString('fr-FR')+' caractères';c.style.color=n>MAXTEXT?'var(--bad)':''}
+});
+document.addEventListener('keydown',e=>{
+  if(V.name!=='quiz'||!Q||e.metaKey||e.ctrlKey||e.altKey)return;
+  const tag=(e.target.tagName||'').toLowerCase();if(tag==='textarea'||tag==='input'||tag==='select')return;
+  const item=curItem();if(!item)return;const k=getCard(item.cid,item.kid);
+  const isSpace=e.key===' '||e.key==='Enter';
+  if(Q.stage==='ask'){
+    if(k.type==='qcm'&&/^[1-4]$/.test(e.key)&&Number(e.key)-1<k.choices.length){quizPick(Number(e.key)-1);e.preventDefault()}
+    else if(k.type==='vf'&&(e.key==='1'||e.key==='2')){quizPick(e.key==='1'?1:0);e.preventDefault()}
+    else if((k.type==='flash'||k.type==='open')&&isSpace){quizReveal();e.preventDefault()}
+  }else if(Q.stage==='reveal'){
+    if(k.type==='qcm'||k.type==='vf'){if(isSpace){quizRate(Q.picked===k.answer?2:0);e.preventDefault()}}
+    else if(/^[1-4]$/.test(e.key)){quizRate(Number(e.key)-1);e.preventDefault()}
+  }
+});
+
+/* ---------- Démarrage ---------- */
+loadLocal();
+applyTheme();
+render();
+initCaps();
+})();
+</script>
+
+</body>
+</html>
