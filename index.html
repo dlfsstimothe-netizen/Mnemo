@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta name="google-site-verification" content="VRBTb41O-VKPljFjQ8F1PpG7K6upue3oB-iLOg4KDWI" /><meta charset="utf-8">
+<meta name="google-site-verification" content="VRBTb41O-VKPljFjQ8F1PpG7K6upue3oB-iLOg4KDWI" /><meta name="google-site-verification" content="w9J-uemfFyoHdxOHj3PP3o_RGBmVohtRNpDZAK0xieU" /><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Mnémo transforme tes cours en questions de révision et te les repose au bon moment grâce à la répétition espacée.">
 <meta name="theme-color" content="#0B7F78">
@@ -114,7 +114,7 @@ button.item:hover{background:var(--surface-2)}
 
 label.f{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px}
 label.f small{font-weight:400;color:var(--ink-2)}
-input[type=text],input[type=email],input[type=password],input[type=date],select,textarea{width:100%;min-height:46px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
+input[type=text],input[type=search],input[type=email],input[type=password],input[type=date],select,textarea{width:100%;min-height:46px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
 textarea{resize:vertical;line-height:1.5}
 .opts{display:flex;flex-wrap:wrap;gap:8px}
 .opt{position:relative;display:inline-flex}
@@ -270,6 +270,12 @@ a{color:var(--accent)}
 @media (max-width:420px){.tile{min-height:160px;padding:14px}.tabs button{gap:5px;font-size:13px}}
 .cd{margin:6px 0 0;padding-left:20px;font-size:14px;color:var(--ink-2);display:grid;gap:2px}.cd .ok{color:var(--good);font-weight:700}
 [hidden]{display:none!important}
+.hintbox{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:14px}
+.irow{display:flex;align-items:center;gap:8px;padding-right:12px;border-bottom:1px solid var(--line)}
+.irow:last-child{border-bottom:0}
+.irow .item{border-bottom:0;flex:1;min-width:0}
+.qtools{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.qcard{touch-action:pan-y}
 </style>
 
 
@@ -530,7 +536,7 @@ function buildSession(mode,scope){
   const now=Date.now(),L=scoped(scope);let items;
   if(mode==='due'){
     const due=shuffle(L.filter(x=>x.card.reps>0&&x.card.due<=now)).sort((a,b)=>a.card.due-b.card.due);
-    const nw=shuffle(L.filter(x=>!x.card.reps)).slice(0,newLeft());
+    const nw=shuffle(L.filter(x=>!x.card.reps)).slice(0,scope.kind==='all'?newLeft():60);
     items=due.concat(nw);
   }else if(mode==='weak'){
     items=shuffle(L.filter(x=>x.card.reps>0&&(x.card.lapses>0||x.card.lastOk===false||(x.card.ease||2.5)<2.2)));
@@ -540,7 +546,7 @@ function buildSession(mode,scope){
 function startQuiz(mode,scope){
   const queue=buildSession(mode,scope);
   if(!queue.length){toast(mode==='weak'?'Aucun point faible pour le moment.':"Rien à réviser ici pour l'instant.");return}
-  Q={mode,scope,queue,pos:0,stage:'ask',anim:true,picked:null,typed:'',results:[],back:{name:V.name,id:V.id}};
+  Q={mode,scope,queue,pos:0,stage:'ask',anim:true,picked:null,typed:'',hint:0,elim:[],skipped:[],results:[],back:{name:V.name,id:V.id}};
   go({name:'quiz'});
 }
 
@@ -894,7 +900,8 @@ const missing=()=>back('home','Accueil')+'<p>Cet élément n\'existe plus.</p>';
 
 function backupBanner(all){
   const st=settings(),now=Date.now();
-  if(env.mode==='cloud'||all.total<10)return'';
+  if(env.mode==='cloud'||A.kind==='firebase'||all.total<10)return'';
+  if(now-((S.docs.profile||{}).createdAt||now)<3*DAY)return'';
   if(now-(st.lastExport||0)<14*DAY||now<(st.remindAt||0))return'';
   return '<section class="banner"><div class="grow"><b>Pense à sauvegarder tes cours</b><span class="small muted" style="display:block">Tes données sont dans ce navigateur. Un export les met à l\'abri.</span></div><div class="wrap"><button class="btn sm primary" data-a="export">Exporter</button><button class="btn sm ghost" data-a="snooze">Plus tard</button></div></section>';
 }
@@ -1010,7 +1017,9 @@ const IC={
   plus:'<path d="M12 5v14M5 12h14"/>',
   save:'<path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6"/>',
   lock:'<rect x="5" y="10.5" width="14" height="9.5" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
-  chart:'<path d="M5 20V10M12 20V4M19 20v-7"/>'
+  chart:'<path d="M5 20V10M12 20V4M19 20v-7"/>',
+  bulb:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
+  next:'<path d="M5 12h14M13 6l6 6-6 6"/>'
 };
 const ic=(n,s)=>'<svg viewBox="0 0 24 24" width="'+(s||22)+'" height="'+(s||22)+'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
 const ico=(n,cls,size,s)=>'<span class="ico '+(size||'')+' '+cls+'">'+ic(n,s)+'</span>';
@@ -1024,6 +1033,21 @@ function services(){
    +'<button class="tile t1" data-a="import" data-m="qcm" data-id="">'+ico('qcm','','',26)+'<b>Créer un QCM</b><span class="sub">Questions et flashcards pour apprendre vite.</span></button>'
    +'<button class="tile t2" data-a="import" data-m="fiche" data-id="">'+ico('fiche','','',26)+'<b>Créer une fiche méthode</b><span class="sub">Résumé, notions clés, méthode et pièges.</span></button>'
    +'</div></section>';
+}
+function qcmRow(x){
+  const cc=counts({kind:'course',id:x.id}),f=(S.docs[x.subjectId]||{}).name||'Sans dossier',m=cc.due+cc.nw>0?'due':'free';
+  return '<div class="irow" data-s="'+esc((x.title+' '+f).toLowerCase())+'"><button class="item" data-a="course" data-id="'+x.id+'">'+ico('qcm','i1','sm',18)+'<span class="grow"><span class="t">'+esc(x.title)+'</span><span class="muted small" style="display:block">QCM · '+esc(f)+' · '+plural(cc.total,'carte','cartes')+(cc.due?' · '+cc.due+' à revoir':'')+'</span></span></button>'
+   +(cc.total?'<button class="btn sm primary" data-a="start" data-m="'+m+'" data-k="course" data-id="'+x.id+'">Réviser</button>':'')+'</div>';
+}
+function ficheRow(x){
+  const f=(S.docs[x.subjectId]||{}).name||'Sans dossier';
+  return '<div class="irow" data-s="'+esc((x.title+' '+f).toLowerCase())+'"><button class="item" data-a="openfiche" data-id="'+x.id+'">'+ico('fiche','i2','sm',18)+'<span class="grow"><span class="t">'+esc(x.title)+'</span><span class="muted small" style="display:block">Fiche · '+esc(f)+' · '+fmtDay(x.createdAt)+'</span></span><span class="muted">›</span></button></div>';
+}
+const allItems=()=>Object.keys(S.docs).filter(k=>(k.startsWith('c_')||k.startsWith('f_'))&&S.docs[k].createdAt).map(id=>Object.assign({id},S.docs[id])).sort((a,b)=>b.createdAt-a.createdAt);
+const itemRow=x=>x.id.startsWith('c_')?qcmRow(x):ficheRow(x);
+function recentSection(){
+  const items=allItems().slice(0,5);if(!items.length)return'';
+  return '<section class="stack"><div class="between"><div class="sec-h">'+ico('cards','i4','lg',26)+'<div><h2 class="h2">Mes dernières créations</h2><p class="small muted">Rouvre ou révise en un clic.</p></div></div><button class="btn sm" data-a="library">Tout voir</button></div><div class="list">'+items.map(itemRow).join('')+'</div></section>';
 }
 function draftBanner(){
   if(!draftHasContent())return'';
@@ -1109,7 +1133,7 @@ function viewHome(){
    +'<div class="xp" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+li.pct+'" aria-label="Progression vers le niveau suivant"><i style="width:'+li.pct+'%"></i></div>'
    +'<div class="band-foot"><span class="small">'+(li.next?'<span class="mono">'+xp+'</span> / '+li.next.xp+' XP pour « '+li.next.t+' »':'Niveau maximum atteint')+'</span>'
    +(todayN>0?'<button class="btn light" data-a="start" data-m="due" data-k="all">Réviser ('+todayN+')</button>':all.total?'<button class="btn light" data-a="start" data-m="free" data-k="all">Révision libre</button>':'')+'</div></section>';
-  h+=draftBanner()+backupBanner(all)+services()+calendarSection();
+  h+=draftBanner()+backupBanner(all)+services()+recentSection()+calendarSection();
   if(all.total)h+=progressCard(all);
   h+=badgesSection();
   return h;
@@ -1127,11 +1151,13 @@ function viewLibrary(){
   const orphC=coursesOf('').length,orphF=fichesOf('').length;
   let h='<div class="between"><div class="sec-h">'+ico('folder','i4','lg',26)+'<h1 class="h1" style="font-size:26px">Mes dossiers</h1></div><button class="btn primary sm" style="white-space:nowrap" data-a="newfolder">'+ic('plus',18)+'Créer un dossier</button></div>'
    +'<p class="muted">Range ici tes QCM et tes fiches méthode.</p>';
+  const items=allItems();
+  if(items.length)h+='<input type="search" id="lib-q" placeholder="Rechercher un QCM ou une fiche…" aria-label="Rechercher un QCM ou une fiche" autocomplete="off"><div class="list" id="lib-res" hidden>'+items.map(itemRow).join('')+'</div><p class="muted small" id="lib-none" hidden>Aucun résultat.</p>';
   if(V.newf)h+='<section class="card stack"><h2 class="h2">Nouveau dossier</h2><label class="f" for="nf-name">Nom du dossier<input type="text" id="nf-name" maxlength="40" placeholder="ex. Droit, Anatomie…" autocomplete="off"></label>'+swatches('nf-c',subs.length%6+1)+'<p class="err" id="nf-err" role="alert" hidden></p><div class="wrap"><button class="btn primary" data-a="createfolder">Créer</button><button class="btn ghost" data-a="cancelfolder">Annuler</button></div></section>';
   if(!subs.length&&!orphC&&!orphF&&!V.newf)h+='<div class="card stack"><p class="muted">Tu n\'as pas encore de dossier. Crée-en un pour ranger tes cours, ou génère d\'abord un QCM ou une fiche et choisis le dossier au moment de l\'enregistrer.</p><div class="wrap"><button class="btn primary" data-a="newfolder">Créer mon premier dossier</button></div></div>';
   const cards=subs.map(s=>folderCard(s.id,s.name,colOf(s),coursesOf(s.id).length,fichesOf(s.id).length));
   if(orphC||orphF)cards.push(folderCard('__none','Sans dossier',6,orphC,orphF));
-  if(cards.length)h+='<div class="fgrid">'+cards.join('')+'</div>';
+  if(cards.length)h+='<div class="fgrid" id="lib-grid">'+cards.join('')+'</div>';
   return h;
 }
 function moveSelect(id,cur){
@@ -1145,8 +1171,8 @@ function viewFolder(){
   let h=back('library','Mes dossiers')+'<div class="sec-h">'+ico('folder','i'+col,'lg',26)+'<div><h1 class="h1">'+esc(s.name)+'</h1><p class="muted">'+plural(cs.length,'QCM','QCM')+' · '+plural(fs.length,'fiche','fiches')+' · '+c.due+' à revoir</p></div></div>';
   if(c.total)h+='<div class="wrap"><button class="btn primary" data-a="start" data-m="due" data-k="subject" data-id="'+sid+'">Réviser</button><button class="btn" data-a="start" data-m="free" data-k="subject" data-id="'+sid+'">Révision libre</button><button class="btn" data-a="start" data-m="weak" data-k="subject" data-id="'+sid+'">Points faibles</button></div>';
   h+='<div class="wrap"><button class="btn" data-a="import" data-m="qcm" data-id="'+sid+'">'+ic('plus',16)+'Créer un QCM</button><button class="btn" data-a="import" data-m="fiche" data-id="'+sid+'">'+ic('plus',16)+'Créer une fiche</button></div>';
-  h+='<section class="stack"><h2 class="h2">QCM</h2>'+(cs.length?'<div class="list">'+cs.map(x=>{const cc=counts({kind:'course',id:x.id});return '<button class="item" data-a="course" data-id="'+x.id+'">'+ico('qcm','i1','sm',18)+'<span class="grow"><span class="t">'+esc(x.title)+'</span><span class="muted small" style="display:block">'+plural(cc.total,'carte','cartes')+(cc.due?' · '+cc.due+' à revoir':'')+'</span></span><span class="muted">›</span></button>'}).join('')+'</div>':'<p class="muted small">Aucun QCM dans ce dossier.</p>')+'</section>';
-  h+='<section class="stack"><h2 class="h2">Fiches méthode</h2>'+(fs.length?'<div class="list">'+fs.map(f=>'<button class="item" data-a="openfiche" data-id="'+f.id+'">'+ico('fiche','i2','sm',18)+'<span class="grow"><span class="t">'+esc(f.title)+'</span><span class="muted small" style="display:block">créée le '+fmtDay(f.createdAt)+'</span></span><span class="muted">›</span></button>').join('')+'</div>':'<p class="muted small">Aucune fiche dans ce dossier.</p>')+'</section>';
+  h+='<section class="stack"><h2 class="h2">QCM</h2>'+(cs.length?'<div class="list">'+cs.slice().reverse().map(qcmRow).join('')+'</div>':'<p class="muted small">Aucun QCM dans ce dossier.</p>')+'</section>';
+  h+='<section class="stack"><h2 class="h2">Fiches méthode</h2>'+(fs.length?'<div class="list">'+fs.map(ficheRow).join('')+'</div>':'<p class="muted small">Aucune fiche dans ce dossier.</p>')+'</section>';
   if(!none){
     h+='<section class="card stack"><h2 class="h2">Gérer le dossier</h2>';
     if(V.rename)h+='<label class="f" for="rn">Nom<input type="text" id="rn" value="'+esc(s.name)+'" maxlength="40"></label>'+swatches('rn-c',col)+'<div class="wrap"><button class="btn primary sm" data-a="saverename">Enregistrer</button><button class="btn sm ghost" data-a="cancelrename">Annuler</button></div>';
@@ -1294,19 +1320,36 @@ async function submitImport(withGen){
 
 /* ---------- Vue : révision ---------- */
 function curItem(){
-  while(Q.pos<Q.queue.length&&!getCard(Q.queue[Q.pos].cid,Q.queue[Q.pos].kid))Q.pos++;
-  return Q.pos<Q.queue.length?Q.queue[Q.pos]:null;
+  for(;;){
+    while(Q.pos<Q.queue.length&&!getCard(Q.queue[Q.pos].cid,Q.queue[Q.pos].kid))Q.pos++;
+    if(Q.pos<Q.queue.length)return Q.queue[Q.pos];
+    if(Q.skipped&&Q.skipped.length){Q.queue=Q.queue.concat(Q.skipped);Q.skipped=[];continue}
+    return null;
+  }
+}
+function hintMax(k){
+  if(k.type==='qcm')return Math.max(0,Math.min(2,k.choices.length-2));
+  if(k.type==='vf')return 1;
+  return 2;
+}
+function hintFor(k,lvl){
+  if(k.type==='vf')return 'Relis chaque mot : un chiffre, un nom ou une négation a peut-être été changé.';
+  const w=String(k.a||'').replace(/\s+/g,' ').trim().split(' ');
+  if(lvl===1)return 'La réponse fait '+w.length+' mot'+(w.length>1?'s':'')+' et commence par « '+w[0].slice(0,12)+(w[0].length>12?'…':'')+' ».';
+  const n=Math.max(2,Math.ceil(w.length/2));
+  return 'Début de la réponse : « '+w.slice(0,n).join(' ')+' … »';
 }
 function viewQuiz(){
   const item=curItem();if(!item)return viewDone();
   const k=getCard(item.cid,item.kid),c=S.docs[item.cid],s=S.docs[c.subjectId]||{};
-  const total=Q.queue.length,sched=Q.mode==='due',rev=Q.stage==='reveal';
-  let h='<div class="qhead"><button class="btn ghost sm" data-a="quit">Quitter</button><div class="qprog" role="progressbar" aria-valuemin="0" aria-valuemax="'+total+'" aria-valuenow="'+Q.pos+'"><i style="width:'+Math.round(Q.pos/total*100)+'%"></i></div><span class="mono small">'+(Q.pos+1)+'/'+total+'</span></div>';
-  h+='<div class="qmeta"><span class="dot" style="--fc:var(--c'+(s.col||1)+')"></span><span>'+esc(s.name||'')+' · '+esc(c.title)+'</span><span class="chip">'+TYPES[k.type]+'</span>'+(item.re?'<span class="chip warn">à retenter</span>':'')+'</div>';
-  h+='<div class="qcard'+(Q.anim&&!rev?' rise':'')+'"><div class="qtext">'+rich(k.q)+'</div>';
+  const sk=Q.skipped?Q.skipped.length:0,total=Q.queue.length+sk,sched=Q.mode==='due',rev=Q.stage==='reveal';
+  const elim=Q.elim||[],hint=Q.hint||0,hm=hintMax(k);
+  let h='<div class="qhead"><button class="btn ghost sm" data-a="quit">Quitter</button><div class="qprog" role="progressbar" aria-valuemin="0" aria-valuemax="'+total+'" aria-valuenow="'+Q.pos+'"><i style="width:'+Math.round(Q.pos/total*100)+'%"></i></div><span class="mono small">'+Math.min(Q.pos+1,total)+'/'+total+'</span></div>';
+  h+='<div class="qmeta"><span class="dot" style="--fc:var(--c'+(s.col||1)+')"></span><span>'+esc(s.name||'Sans dossier')+' · '+esc(c.title)+'</span><span class="chip">'+TYPES[k.type]+'</span>'+(item.re?'<span class="chip warn">à retenter</span>':'')+(sk?'<span class="chip">'+sk+' passée'+(sk>1?'s':'')+'</span>':'')+'</div>';
+  h+='<div class="qcard'+(Q.anim&&!rev?' rise':'')+'" id="qcard"><div class="qtext">'+rich(k.q)+'</div>';
   if(k.type==='qcm'){
-    h+='<div class="stack">'+k.choices.map((ch,i)=>{let cl='choice';if(rev){cl+=i===k.answer?' ok':i===Q.picked?' ko':' dim'}
-      return '<button class="'+cl+'" data-a="pick" data-i="'+i+'"'+(rev?' disabled':'')+'><b>'+String.fromCharCode(65+i)+'</b><span>'+rich(ch)+'</span></button>'}).join('')+'</div>';
+    h+='<div class="stack">'+k.choices.map((ch,i)=>{let cl='choice';if(rev){cl+=i===k.answer?' ok':i===Q.picked?' ko':' dim'}else if(elim.includes(i))cl+=' dim';
+      return '<button class="'+cl+'" data-a="pick" data-i="'+i+'"'+(rev||elim.includes(i)?' disabled':'')+'><b>'+String.fromCharCode(65+i)+'</b><span>'+rich(ch)+'</span></button>'}).join('')+'</div>';
   }else if(k.type==='vf'){
     h+='<div class="rate" style="grid-template-columns:1fr 1fr">'+[[1,'Vrai'],[0,'Faux']].map(p=>{let cl='choice';if(rev){const isAns=(p[0]===1)===k.answer;cl+=isAns?' ok':((p[0]===1)===Q.picked?' ko':' dim')}
       return '<button class="'+cl+'" style="justify-content:center;font-weight:600" data-a="pick" data-i="'+p[0]+'"'+(rev?' disabled':'')+'>'+p[1]+'</button>'}).join('')+'</div>';
@@ -1314,25 +1357,28 @@ function viewQuiz(){
     h+='<label class="f" for="typed">Ta réponse <small>facultatif, écrire aide à mémoriser</small><textarea id="typed" rows="4">'+esc(Q.typed||'')+'</textarea></label>';
   }
   if(!rev){
+    if(hint){h+='<div class="hintbox" role="status">'+(k.type==='qcm'?(hint>1?'Deux mauvaises réponses ont été éliminées.':'Une mauvaise réponse a été éliminée.'):esc(hintFor(k,hint)))+'</div>'}
     if(k.type==='flash'||k.type==='open')h+='<button class="btn primary block" data-a="reveal">'+(k.type==='open'?'Voir la réponse':'Montrer la réponse')+'</button>';
+    h+='<div class="qtools"><button class="btn sm" data-a="hint"'+(hint>=hm?' disabled':'')+'>'+ic('bulb',16)+'Indice'+(hm?' ('+hint+'/'+hm+')':'')+'</button><button class="btn sm ghost" data-a="skip">Passer'+ic('next',16)+'</button></div>';
   }else{
     if(k.type==='qcm'||k.type==='vf'){
-      const ok=Q.picked===(k.type==='qcm'?k.answer:k.answer);
+      const ok=Q.picked===k.answer;
       h+='<p class="verdict '+(ok?'ok':'ko')+'" role="status">'+(ok?'Bonne réponse':'Pas tout à fait')+'</p>';
       if(k.type==='vf')h+='<p class="small muted">La bonne réponse : <strong>'+(k.answer?'Vrai':'Faux')+'</strong>.</p>';
       if(k.explain)h+='<div class="answer"><span class="lbl">Explication</span><div>'+rich(k.explain)+'</div></div>';
-      h+='<div class="wrap" style="justify-content:flex-end">'+(ok?'<button class="btn" data-a="rate" data-g="3">Trop facile</button>':'')+'<button class="btn primary" data-a="rate" data-g="'+(ok?2:0)+'">Suivant</button></div>';
+      h+='<div class="wrap" style="justify-content:flex-end">'+(ok&&!hint?'<button class="btn" data-a="rate" data-g="3">Trop facile</button>':'')+'<button class="btn primary" data-a="rate" data-g="'+(ok?2:0)+'">Suivant'+ic('next',16)+'</button></div>';
     }else{
       if(k.type==='open'&&Q.typed)h+='<div class="answer"><span class="lbl">Ta réponse</span><div>'+rich(Q.typed)+'</div></div>';
       h+='<div class="answer"><span class="lbl">'+(k.type==='open'?'Réponse attendue':'Réponse')+'</span><div><span class="mk">'+rich(k.a)+'</span></div></div>';
-      h+='<div class="stack"><span class="small muted">Tu t\'en souvenais ?</span><div class="rate">'+[['À revoir',0],['Difficile',1],['Bien',2],['Facile',3]].map(p=>{
+      h+='<div class="stack"><span class="small muted">Tu t\'en souvenais ?'+(hint?' <em>(indice utilisé : « Facile » indisponible)</em>':'')+'</span><div class="rate">'+[['À revoir',0],['Difficile',1],['Bien',2],['Facile',3]].map(p=>{
         const sub=sched?(item.re?(p[1]===0?'Revoir':'1 j'):ivLabel(nextInt(k,p[1]))):'';
-        return '<button class="g'+p[1]+'" data-a="rate" data-g="'+p[1]+'">'+p[0]+'<small>'+sub+'</small></button>'}).join('')+'</div></div>';
+        return '<button class="g'+p[1]+'" data-a="rate" data-g="'+p[1]+'"'+(hint&&p[1]===3?' disabled':'')+'>'+p[0]+'<small>'+sub+'</small></button>'}).join('')+'</div></div>';
     }
   }
   h+='</div>';
   if(!sched)h+='<p class="small muted">'+(Q.mode==='free'?'Révision libre':'Points faibles')+' : cette série ne modifie pas le planning des cartes.</p>';
-  if(window.matchMedia&&matchMedia('(hover:hover)').matches)h+='<p class="kbd">Espace : révéler ou continuer · 1 à 4 : choisir ou noter</p>';
+  h+='<p class="small muted" style="text-align:center">Glisse la carte vers la gauche pour passer à la suivante</p>';
+  if(window.matchMedia&&matchMedia('(hover:hover)').matches)h+='<p class="kbd">Espace : révéler ou continuer · 1 à 4 : choisir ou noter · H : indice · → : passer</p>';
   return h;
 }
 function viewDone(){
@@ -1354,16 +1400,34 @@ function quizReveal(){
 }
 function quizPick(i){
   const item=curItem();if(!item||Q.stage!=='ask')return;
-  const k=getCard(item.cid,item.kid);
+  const k=getCard(item.cid,item.kid);if(k.type==='qcm'&&(Q.elim||[]).includes(i))return;
   Q.picked=k.type==='vf'?i===1:i;Q.stage='reveal';Q.anim=false;render();
+}
+function quizHint(){
+  const item=curItem();if(!item||Q.stage!=='ask')return;
+  const k=getCard(item.cid,item.kid),mx=hintMax(k);if((Q.hint||0)>=mx)return;
+  const t=document.getElementById('typed');if(t)Q.typed=t.value;
+  if(k.type==='qcm'){const wrong=k.choices.map((_,i)=>i).filter(i=>i!==k.answer&&!(Q.elim||[]).includes(i));if(wrong.length)Q.elim=(Q.elim||[]).concat(shuffle(wrong)[0])}
+  Q.hint=(Q.hint||0)+1;Q.anim=false;render();
+}
+function quizSkip(){
+  const item=curItem();if(!item||Q.stage!=='ask')return;
+  (Q.skipped=Q.skipped||[]).push({cid:item.cid,kid:item.kid,re:item.re});
+  Q.pos++;Q.hint=0;Q.elim=[];Q.typed='';Q.picked=null;Q.anim=true;render();window.scrollTo(0,0);
+}
+function quizNext(){
+  const item=curItem();if(!item)return;const k=getCard(item.cid,item.kid);
+  if(Q.stage==='ask')quizSkip();
+  else if(k.type==='qcm'||k.type==='vf')quizRate(Q.picked===k.answer?2:0);
 }
 function quizRate(g){
   const item=curItem();if(!item||Q.stage!=='reveal')return;
+  if(Q.hint&&g===3)g=2;
   const first=!item.re;
   applyRating(item,g);
   if(first)Q.results.push({cid:item.cid,kid:item.kid,g});
   if(g===0)Q.queue.splice(Math.min(Q.queue.length,Q.pos+5),0,{cid:item.cid,kid:item.kid,re:true});
-  Q.pos++;Q.stage='ask';Q.picked=null;Q.typed='';Q.anim=true;render();window.scrollTo(0,0);
+  Q.pos++;Q.stage='ask';Q.picked=null;Q.typed='';Q.hint=0;Q.elim=[];Q.anim=true;render();window.scrollTo(0,0);
 }
 
 /* ---------- Vue : réglages ---------- */
@@ -1713,6 +1777,8 @@ $app.addEventListener('click',async e=>{
     case 'quit':{const b=Q&&Q.back?Q.back:{name:'home'};go(b.name==='quiz'?{name:'home'}:b);break}
     case 'reveal':quizReveal();break;
     case 'pick':quizPick(Number(el.dataset.i));break;
+    case 'hint':quizHint();break;
+    case 'skip':quizSkip();break;
     case 'rate':quizRate(Number(el.dataset.g));break;
     case 'impgo':submitImport(true);break;
     case 'impsave':submitImport(false);break;
@@ -1802,14 +1868,23 @@ $app.addEventListener('change',async e=>{
 });
 $app.addEventListener('input',e=>{
   if(e.target.id==='cs-q'){applyCardFilter();return}
+  if(e.target.id==='lib-q'){
+    const q=e.target.value.trim().toLowerCase(),res=document.getElementById('lib-res'),grid=document.getElementById('lib-grid'),none=document.getElementById('lib-none');
+    let n=0;res.querySelectorAll('.irow').forEach(r=>{const ok=!q||r.dataset.s.indexOf(q)>=0;r.hidden=!ok;if(ok)n++});
+    res.hidden=!q;if(grid)grid.hidden=!!q;none.hidden=!q||n>0;return}
   if(e.target.id==='imp-text'){const n=e.target.value.length,c=document.getElementById('imp-count');
     c.textContent=n.toLocaleString('fr-FR')+' / '+MAXTEXT.toLocaleString('fr-FR')+' caractères';c.style.color=n>MAXTEXT?'var(--bad)':''}
 });
+let tpos=null;
+$app.addEventListener('touchstart',e=>{if(V.name!=='quiz'||!e.target.closest('.qcard'))return;const t=e.touches[0];tpos={x:t.clientX,y:t.clientY}},{passive:true});
+$app.addEventListener('touchend',e=>{if(!tpos||V.name!=='quiz')return;const t=e.changedTouches[0],dx=t.clientX-tpos.x,dy=t.clientY-tpos.y;tpos=null;if(dx<-70&&Math.abs(dy)<60)quizNext()},{passive:true});
 window.addEventListener('beforeunload',e=>{if(draftHasContent()){e.preventDefault();e.returnValue=''}});
 document.addEventListener('keydown',e=>{
   if(V.name!=='quiz'||!Q||e.metaKey||e.ctrlKey||e.altKey)return;
   const tag=(e.target.tagName||'').toLowerCase();if(tag==='textarea'||tag==='input'||tag==='select')return;
   const item=curItem();if(!item)return;const k=getCard(item.cid,item.kid);
+  if(e.key==='ArrowRight'){quizNext();e.preventDefault();return}
+  if(e.key==='h'||e.key==='H'){quizHint();e.preventDefault();return}
   const isSpace=e.key===' '||e.key==='Enter';
   if(Q.stage==='ask'){
     if(k.type==='qcm'&&/^[1-4]$/.test(e.key)&&Number(e.key)-1<k.choices.length){quizPick(Number(e.key)-1);e.preventDefault()}
